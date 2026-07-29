@@ -1545,49 +1545,118 @@ class Globe {
   }
   setZoom(z) { this.tZoom = Math.max(1, Math.min(ZMAX, z)); this.autoSpin = false; }
 
+  /* Rotation d'un déplacement à l'écran : le point saisi doit rester sous le
+     doigt. Un déplacement de dx pixels correspond à un angle dx/R ; les
+     méridiens se resserrant vers les pôles, un pixel horizontal représente
+     d'autant plus de longitude que la latitude est élevée. */
+  _panBy(dx, dy) {
+    const k = 57.29578 / this.R;
+    const cosLat = Math.max(0.15, Math.cos(this.lat * RAD));
+    this.tLon = this.lon = wrapLon(this.lon - dx * k / cosLat);
+    this.tLat = this.lat = Math.max(-89, Math.min(89, this.lat + dy * k));
+    this._dirty = true;
+  }
+
   _bindEvents() {
     const cv = this.cv;
-    let dragging = false, lx = 0, ly = 0, moved = 0;
+    /* Un seul doigt fait tourner le globe, deux doigts le zooment et le
+       déplacent. Sans ce suivi, chaque doigt était traité comme un glissé
+       indépendant : les deux séries d'événements s'annulaient et se
+       contredisaient, d'où l'impression que la carte partait dans tous les sens. */
+    const pts = new Map();          // pointeurs actuellement posés
+    let mode = 0;                   // 0 : repos · 1 : rotation · 2 : pincement
+    let lx = 0, ly = 0, moved = 0;  // dernier point du doigt qui fait tourner
+    let pinchD = 0, pinchX = 0, pinchY = 0;   // écartement et milieu des deux doigts
+    const two = () => { const [a, b] = [...pts.values()]; return [a, b]; };
+
     const down = e => {
-      dragging = true; moved = 0; cv.classList.add('drag');
-      lx = e.clientX; ly = e.clientY; this.autoSpin = false;
-      cv.setPointerCapture(e.pointerId);
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      try { cv.setPointerCapture(e.pointerId); } catch (_) { }
+      this.autoSpin = false;
+      if (pts.size === 1) {
+        mode = 1; moved = 0; lx = e.clientX; ly = e.clientY; cv.classList.add('drag');
+      } else if (pts.size === 2) {
+        mode = 2; cv.classList.remove('drag');
+        moved = 999;               // un pincement n'est jamais un clic
+        const [a, b] = two();
+        pinchD = Math.hypot(a.x - b.x, a.y - b.y);
+        pinchX = (a.x + b.x) / 2; pinchY = (a.y + b.y) / 2;
+      } else mode = 0;             // trois doigts ou plus : on ne fait rien
     };
+
     const move = e => {
-      const r = cv.getBoundingClientRect();
-      const sx = e.clientX - r.left, sy = e.clientY - r.top;
-      if (dragging) {
+      if (pts.has(e.pointerId)) pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (mode === 2 && pts.size === 2) {
+        const [a, b] = two();
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+        const r = cv.getBoundingClientRect();
+        // Principe : le lieu pincé reste entre les deux doigts. On note quel
+        // point du globe se trouvait sous l'ancien milieu, on applique le
+        // nouvel écartement, puis on ramène ce point sous le nouveau milieu.
+        // Le déplacement et le zoom sont ainsi traités d'un seul geste.
+        this._rot();
+        const anchor = this.unproject(pinchX - r.left, pinchY - r.top);
+        // le zoom suit l'écartement sans amortissement : pendant un geste
+        // tactile, l'image doit coller aux doigts
+        if (pinchD > 8 && d > 8) {
+          const z = Math.max(1, Math.min(ZMAX, this.zoom * (d / pinchD)));
+          this.zoom = this.tZoom = z;
+        }
+        let done = false;
+        if (anchor) {
+          this._rot();
+          const p = this.project(anchor.lat, anchor.lon);
+          const ex = mx - r.left - p.x, ey = my - r.top - p.y;
+          // près du bord du globe la projection s'écrase : une correction
+          // démesurée signifierait que le repère n'est plus fiable
+          if (p.z > 0.15 && Math.hypot(ex, ey) < this.R * 0.5) { this._panBy(ex, ey); done = true; }
+        }
+        if (!done) this._panBy(mx - pinchX, my - pinchY);   // repli : on suit le milieu
+        pinchD = d; pinchX = mx; pinchY = my;
+        this._dirty = true;
+        return;
+      }
+
+      if (mode === 1) {
         const dx = e.clientX - lx, dy = e.clientY - ly;
         moved += Math.abs(dx) + Math.abs(dy);
-        // Le point sous le doigt doit rester sous le doigt : un déplacement
-        // de dx pixels correspond à un angle dx/R. L'ancienne formule en
-        // 1/√zoom faisait s'emballer le déplacement dès qu'on zoomait.
-        const k = 57.29578 / this.R;
-        // les méridiens se resserrent vers les pôles : à latitude élevée,
-        // un pixel horizontal représente davantage de longitude
-        const cosLat = Math.max(0.15, Math.cos(this.lat * RAD));
-        this.tLon = this.lon = wrapLon(this.lon - dx * k / cosLat);
-        this.tLat = this.lat = Math.max(-89, Math.min(89, this.lat + dy * k));
+        this._panBy(dx, dy);
         lx = e.clientX; ly = e.clientY;
-        this._dirty = true;
-      } else {
-        const hit = this.pick(sx, sy);
+        return;
+      }
+
+      if (!pts.size) {   // survol à la souris uniquement
+        const r = cv.getBoundingClientRect();
+        const hit = this.pick(e.clientX - r.left, e.clientY - r.top);
         const id = hit ? hit.id : null;
         if (id !== this.hover) { this.hover = id; this._dirty = true; this.onHover(hit, e.clientX, e.clientY); }
         cv.style.cursor = hit ? 'pointer' : '';
       }
     };
+
     const up = e => {
-      if (dragging && moved < 5) {
+      const wasRotating = mode === 1;
+      pts.delete(e.pointerId);
+      if (wasRotating && !pts.size && moved < 5) {
         const r = cv.getBoundingClientRect();
         const hit = this.pick(e.clientX - r.left, e.clientY - r.top);
         if (hit) this.onPick(hit);
       }
-      dragging = false; cv.classList.remove('drag');
+      if (pts.size === 1) {
+        // on relâche un doigt du pincement : le doigt restant reprend la rotation
+        const p = [...pts.values()][0];
+        mode = 1; moved = 999; lx = p.x; ly = p.y; cv.classList.add('drag');
+      } else if (!pts.size) {
+        mode = 0; pinchD = 0; cv.classList.remove('drag');
+      }
     };
+
     cv.addEventListener('pointerdown', down);
     cv.addEventListener('pointermove', move);
     cv.addEventListener('pointerup', up);
+    cv.addEventListener('pointercancel', up);
     cv.addEventListener('pointerleave', () => { if (this.hover) { this.hover = null; this.onHover(null); } });
     cv.addEventListener('wheel', e => {
       e.preventDefault();
@@ -1602,16 +1671,11 @@ class Globe {
       }
       this.tZoom = nz; this.autoSpin = false;
     }, { passive: false });
-    // pinch
-    let pd = 0;
-    cv.addEventListener('touchmove', e => {
-      if (e.touches.length === 2) {
-        const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-        if (pd) this.tZoom = Math.max(1, Math.min(ZMAX, this.tZoom * (d / pd)));
-        pd = d; this.autoSpin = false; e.preventDefault();
-      }
-    }, { passive: false });
-    cv.addEventListener('touchend', () => { pd = 0; });
+    // Safari iOS déclenche encore son propre zoom de page sur un pincement :
+    // on l'en empêche, le geste appartient au globe.
+    cv.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    for (const ev of ['gesturestart', 'gesturechange', 'gestureend'])
+      cv.addEventListener(ev, e => e.preventDefault());
     window.addEventListener('resize', () => this.resize());
     // L'ouverture du panneau rétrécit le canvas sans redimensionner la
     // fenêtre : sans cette observation, la zone de dessin garderait ses
