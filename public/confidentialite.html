@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1120">
+<title>Confidentialité — Un monde à table</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/page.css">
+</head>
+<body class="page">
+<main>
+  <a class="back" href="./">← Retour à l’atlas</a>
+  <h1>Politique de confidentialité</h1>
+  <p class="updated">Dernière mise à jour : <span id="d"></span></p>
+
+  <section class="highlight">
+    <h2>En résumé</h2>
+    <p>
+      Ce site <b>ne dépose aucun cookie publicitaire</b>, <b>n’utilise aucun traceur
+      publicitaire</b> et <b>ne crée aucun compte visiteur</b>. Vous pouvez le
+      consulter sans fournir la moindre donnée personnelle.
+    </p>
+  </section>
+
+  <section>
+    <h2>Données stockées sur votre appareil</h2>
+    <p>
+      Le site conserve localement, dans votre navigateur, uniquement ce qui est
+      nécessaire à son fonctionnement&nbsp;:
+    </p>
+    <ul>
+      <li>les <b>fiches et la carte</b> mises en cache, pour un affichage rapide et
+        une consultation possible hors connexion&nbsp;;</li>
+      <li>d’éventuelles <b>photos que vous auriez importées</b> depuis votre appareil,
+        qui restent alors <b>sur votre seul navigateur</b> et ne sont transmises à
+        personne&nbsp;;</li>
+      <li>si vous êtes l’administrateur, un <b>jeton de connexion</b> permettant de
+        rester identifié.</li>
+    </ul>
+    <p>
+      Ces éléments ne quittent pas votre appareil et sont effacés si vous videz les
+      données de navigation du site.
+    </p>
+  </section>
+
+  <section>
+    <h2>Données transmises à des tiers</h2>
+    <p>Consulter le site déclenche des requêtes vers&nbsp;:</p>
+    <ul>
+      <li><b>Vercel</b> (hébergement) et <b>Supabase</b> (contenus et images), qui
+        enregistrent des journaux techniques comportant notamment l’adresse IP, à des
+        fins de sécurité et de bon fonctionnement&nbsp;;</li>
+      <li><b>Wikimedia Commons</b> et <b>Wikipédia</b>, lorsqu’une fiche affiche une
+        photographie libre&nbsp;;</li>
+      <li><b>Wikidata</b>, uniquement si vous activez vous-même la couche
+        encyclopédique.</li>
+    </ul>
+    <p>
+      Ces requêtes sont indispensables à l’affichage. Aucune donnée n’est vendue,
+      louée ni transmise à des fins commerciales ou publicitaires.
+    </p>
+    <p class="note">
+      Vercel et Supabase pouvant être établis hors de l’Union européenne, les
+      transferts éventuels sont encadrés par les clauses contractuelles types de la
+      Commission européenne. Choisir une région d’hébergement européenne à la création
+      du projet limite ces transferts.
+    </p>
+  </section>
+
+  <section>
+    <h2>Base légale et durée</h2>
+    <p>
+      Le traitement des journaux techniques repose sur l’<b>intérêt légitime</b>
+      (article 6.1.f du RGPD)&nbsp;: assurer la sécurité et la disponibilité du site.
+      Ces journaux sont conservés pour une durée limitée par les hébergeurs, en
+      général de quelques jours à quelques mois.
+    </p>
+    <p>
+      Aucun profilage, aucune décision automatisée et aucune prospection ne sont
+      effectués.
+    </p>
+  </section>
+
+  <section>
+    <h2>Vos droits</h2>
+    <p>
+      Vous disposez d’un droit d’accès, de rectification, d’effacement, de limitation
+      et d’opposition sur les données vous concernant. Pour les exercer, écrivez à
+      <a href="mailto:contact@unmondeatable.fr">contact@unmondeatable.fr</a>.
+    </p>
+    <p>
+      Vous pouvez également introduire une réclamation auprès de la
+      <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">CNIL</a>,
+      autorité de contrôle française.
+    </p>
+  </section>
+
+  <section>
+    <h2>Contenus destinés aux enfants</h2>
+    <p>
+      Ce site est tout public et ne collecte sciemment aucune donnée concernant des
+      mineurs, aucune inscription n’étant possible.
+    </p>
+  </section>
+
+  <footer>
+    <a href="./">Atlas</a> · <a href="mentions-legales.html">Mentions légales</a> ·
+    <span>© <span id="y"></span> Georges Viana — Made in France</span>
+  </footer>
+</main>
+<script>
+  document.getElementById('y').textContent = new Date().getFullYear();
+  document.getElementById('d').textContent =
+    new Date(document.lastModified).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+</script>
+</body>
+</html>

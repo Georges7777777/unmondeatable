@@ -1,0 +1,18 @@
+{
+  "name": "unmondeatable",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Atlas interactif de 400 spécialités culinaires du monde",
+  "author": "Georges Viana",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "data": "node scripts/export-data.mjs",
+    "seed": "node scripts/seed-supabase.mjs",
+    "dev": "node scripts/build.mjs && npx --yes serve public -l 3000"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}

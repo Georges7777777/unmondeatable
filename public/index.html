@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr" class="booting">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1120">
+<title>Un monde à table — 400 spécialités culinaires du monde entier</title>
+<meta name="description" content="Explorez le globe et découvrez 400 spécialités culinaires du monde entier, leurs recettes et leurs ingrédients ajustés au nombre de convives. En français, anglais, espagnol et portugais.">
+<link rel="canonical" href="https://unmondeatable.fr/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://unmondeatable.fr/">
+<meta property="og:site_name" content="Un monde à table">
+<meta property="og:title" content="Un monde à table — 400 spécialités culinaires du monde entier">
+<meta property="og:description" content="400 spécialités culinaires à explorer sur un globe interactif, avec recettes et ingrédients en 4 langues.">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:locale:alternate" content="en_GB">
+<meta property="og:locale:alternate" content="es_ES">
+<meta property="og:locale:alternate" content="pt_PT">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preload" href="data/core.json" as="fetch" crossorigin>
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body class="booting">
+
+<div id="boot">
+  <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+    <circle cx="24" cy="24" r="21" fill="#12395e" stroke="#e8b04b" stroke-width="1.6"/>
+    <path d="M9 17c5 2 9-1 13 1s7 0 11 3M8 30c6-1 9 2 14 1s8 2 12 0" stroke="#6fbf8f" stroke-width="2.2" stroke-linecap="round"/>
+    <ellipse cx="24" cy="24" rx="9" ry="21" stroke="#e8b04b" stroke-width="1.1" opacity=".55"/>
+    <circle cx="24" cy="24" r="4.6" fill="#e8b04b"/>
+  </svg>
+  <p>Chargement de l’atlas…</p>
+</div>
+
+<div id="app">
+  <header>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+        <circle cx="24" cy="24" r="21" fill="#12395e" stroke="#e8b04b" stroke-width="1.6"/>
+        <path d="M9 17c5 2 9-1 13 1s7 0 11 3M8 30c6-1 9 2 14 1s8 2 12 0" stroke="#6fbf8f" stroke-width="2.2" stroke-linecap="round"/>
+        <ellipse cx="24" cy="24" rx="9" ry="21" stroke="#e8b04b" stroke-width="1.1" opacity=".55"/>
+        <circle cx="24" cy="24" r="4.6" fill="#e8b04b"/>
+      </svg>
+      <div class="brand-text">
+        <h1><span id="t1">Un monde à</span> <em id="t2">table</em></h1>
+        <p id="tag">Le Goût du Monde</p>
+        <p class="signature">Made in France — by Georges Viana</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+      <input id="q" type="search" autocomplete="off" placeholder="Chercher un plat, un pays…" aria-label="Rechercher">
+      <div class="results" id="results"></div>
+    </div>
+    <div class="langs">
+      <button data-l="fr" class="on">FR</button><button data-l="en">EN</button>
+      <button data-l="es">ES</button><button data-l="pt">PT</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="stage">
+      <canvas id="globe"></canvas>
+      <div class="continents"></div>
+      <div class="hint" id="hint"></div>
+      <div class="zoomctl">
+        <button id="zin" title="Zoomer" aria-label="Zoomer">+</button>
+        <button id="zout" title="Dézoomer" aria-label="Dézoomer">−</button>
+        <button id="zhome" title="Vue mondiale" aria-label="Vue mondiale">↺</button>
+      </div>
+      <div id="count"></div>
+      <footer class="legal">
+        <a href="mentions-legales.html">Mentions légales</a>
+        <span>·</span>
+        <a href="confidentialite.html">Confidentialité</a>
+        <span>·</span>
+        <a href="mailto:contact@unmondeatable.fr">Contact</a>
+        <span>·</span>
+        <span>© <span id="year">2026</span> Georges Viana</span>
+      </footer>
+    </div>
+    <aside id="panel" class="hidden"></aside>
+  </main>
+</div>
+
+<script>
+  document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+<script src="assets/config.js"></script>
+<script src="assets/geo.js"></script>
+<script src="assets/engine.js"></script>
+</body>
+</html>
