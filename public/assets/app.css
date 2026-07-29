@@ -104,7 +104,9 @@ a.wlink:hover{text-decoration:underline}
   backdrop-filter:blur(18px);overflow-y:auto;overflow-x:hidden;transition:margin-right .4s cubic-bezier(.4,0,.2,1)
 }
 #panel.hidden{margin-right:calc(-1 * clamp(360px,32vw,470px))}
-.panel-empty{padding:56px 30px;text-align:center;color:var(--ink-dim)}
+.panel-empty{position:relative;padding:56px 30px;text-align:center;color:var(--ink-dim)}
+/* le globe est visible à côté du panneau sur grand écran : pas besoin de fermer */
+.close-empty{display:none}
 .panel-empty svg{width:74px;height:74px;opacity:.5;margin-bottom:18px}
 .panel-empty h2{font-family:var(--serif);color:var(--ink);font-size:21px;margin:0 0 10px}
 .panel-empty p{font-size:13.5px;line-height:1.65;margin:0 0 22px}
@@ -226,6 +228,12 @@ ol.steps li:last-child::after{display:none}
   #panel.hidden{margin-right:0;transform:translateY(102%)}
   .continents{max-width:calc(100% - 36px)}
   .hint{bottom:12px;font-size:11px}
+  /* la feuille recouvre le globe : il faut toujours pouvoir la refermer */
+  .close-empty{
+    display:grid;place-items:center;position:absolute;top:12px;right:12px;width:36px;height:36px;
+    border-radius:50%;background:rgba(4,8,16,.6);border:1px solid var(--line);font-size:15px;color:var(--ink)
+  }
+  .panel-empty{padding:52px 22px 30px}
 }
 
 /* ============================================================

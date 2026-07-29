@@ -486,8 +486,14 @@ class Globe {
       if (dragging) {
         const dx = e.clientX - lx, dy = e.clientY - ly;
         moved += Math.abs(dx) + Math.abs(dy);
-        const k = 0.22 / Math.sqrt(this.zoom);
-        this.tLon = this.lon = wrapLon(this.lon - dx * k);
+        // Le point sous le doigt doit rester sous le doigt : un déplacement
+        // de dx pixels correspond à un angle dx/R. L'ancienne formule en
+        // 1/√zoom faisait s'emballer le déplacement dès qu'on zoomait.
+        const k = 57.29578 / this.R;
+        // les méridiens se resserrent vers les pôles : à latitude élevée,
+        // un pixel horizontal représente davantage de longitude
+        const cosLat = Math.max(0.15, Math.cos(this.lat * RAD));
+        this.tLon = this.lon = wrapLon(this.lon - dx * k / cosLat);
         this.tLat = this.lat = Math.max(-89, Math.min(89, this.lat + dy * k));
         lx = e.clientX; ly = e.clientY;
         this._dirty = true;
@@ -534,6 +540,13 @@ class Globe {
     }, { passive: false });
     cv.addEventListener('touchend', () => { pd = 0; });
     window.addEventListener('resize', () => this.resize());
+    // L'ouverture du panneau rétrécit le canvas sans redimensionner la
+    // fenêtre : sans cette observation, la zone de dessin garderait ses
+    // anciennes proportions et le globe apparaîtrait ovale.
+    if (typeof ResizeObserver !== 'undefined') {
+      this._ro = new ResizeObserver(() => this.resize());
+      this._ro.observe(cv);
+    }
   }
 
   _loop(t) {

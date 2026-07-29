@@ -103,9 +103,15 @@ function fmtTime(m) {
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /* ---------- panel ---------- */
+// Sur petit écran le panneau n'est pas une colonne à côté du globe mais une
+// feuille qui le recouvre : il doit pouvoir se refermer entièrement.
+const isSheet = () => window.matchMedia('(max-width:860px)').matches;
+function closePanel() { $('#panel').classList.add('hidden'); }
+
 function renderEmpty() {
   const picks = ['pizza-napoletana', 'ceviche', 'ramen-tonkotsu', 'tagine-agneau', 'feijoada', 'pad-thai'];
   $('#panel').innerHTML = `<div class="panel-empty fade">
+    <button class="close close-empty" title="${t('close')}">✕</button>
     <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.4">
       <circle cx="50" cy="50" r="34"/><ellipse cx="50" cy="50" rx="14" ry="34"/>
       <path d="M18 38h64M18 62h64"/><circle cx="50" cy="50" r="34"/>
@@ -117,6 +123,7 @@ function renderEmpty() {
       return `<button data-go="${id}">${esc(d.n[state.lang])}</button>`;
     }).join('')}</div></div>`;
   $('#panel').querySelectorAll('[data-go]').forEach(b => b.onclick = () => select(b.dataset.go));
+  const c = $('#panel .close-empty'); if (c) c.onclick = closePanel;
 }
 
 function renderDish() {
@@ -285,6 +292,9 @@ function select(id, keepZoom) {
 function deselect() {
   state.dish = null; globe.active = null;
   renderEmpty();
+  // sur mobile, laisser l'écran d'accueil ouvert masquerait le globe sans
+  // qu'on puisse le refermer : on rend la main à la carte.
+  if (isSheet()) closePanel();
   const v = CONT_VIEW[state.cont];
   globe.flyTo(v.lat, v.lon, v.z);
 }
@@ -431,6 +441,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     onPick: m => pickMarker(m, true),
     onHover: (m, x, y) => showTip(m, x, y)
   });
+  // rendu accessible pour les tests automatisés et le diagnostic en console
+  window.theGlobe = globe;
   refreshMarkers();
   // continent chips
   const cbox = $('.continents');

@@ -1559,8 +1559,14 @@ class Globe {
       if (dragging) {
         const dx = e.clientX - lx, dy = e.clientY - ly;
         moved += Math.abs(dx) + Math.abs(dy);
-        const k = 0.22 / Math.sqrt(this.zoom);
-        this.tLon = this.lon = wrapLon(this.lon - dx * k);
+        // Le point sous le doigt doit rester sous le doigt : un déplacement
+        // de dx pixels correspond à un angle dx/R. L'ancienne formule en
+        // 1/√zoom faisait s'emballer le déplacement dès qu'on zoomait.
+        const k = 57.29578 / this.R;
+        // les méridiens se resserrent vers les pôles : à latitude élevée,
+        // un pixel horizontal représente davantage de longitude
+        const cosLat = Math.max(0.15, Math.cos(this.lat * RAD));
+        this.tLon = this.lon = wrapLon(this.lon - dx * k / cosLat);
         this.tLat = this.lat = Math.max(-89, Math.min(89, this.lat + dy * k));
         lx = e.clientX; ly = e.clientY;
         this._dirty = true;
@@ -1607,6 +1613,13 @@ class Globe {
     }, { passive: false });
     cv.addEventListener('touchend', () => { pd = 0; });
     window.addEventListener('resize', () => this.resize());
+    // L'ouverture du panneau rétrécit le canvas sans redimensionner la
+    // fenêtre : sans cette observation, la zone de dessin garderait ses
+    // anciennes proportions et le globe apparaîtrait ovale.
+    if (typeof ResizeObserver !== 'undefined') {
+      this._ro = new ResizeObserver(() => this.resize());
+      this._ro.observe(cv);
+    }
   }
 
   _loop(t) {
@@ -1747,9 +1760,15 @@ function fmtTime(m) {
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /* ---------- panel ---------- */
+// Sur petit écran le panneau n'est pas une colonne à côté du globe mais une
+// feuille qui le recouvre : il doit pouvoir se refermer entièrement.
+const isSheet = () => window.matchMedia('(max-width:860px)').matches;
+function closePanel() { $('#panel').classList.add('hidden'); }
+
 function renderEmpty() {
   const picks = ['pizza-napoletana', 'ceviche', 'ramen-tonkotsu', 'tagine-agneau', 'feijoada', 'pad-thai'];
   $('#panel').innerHTML = `<div class="panel-empty fade">
+    <button class="close close-empty" title="${t('close')}">✕</button>
     <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.4">
       <circle cx="50" cy="50" r="34"/><ellipse cx="50" cy="50" rx="14" ry="34"/>
       <path d="M18 38h64M18 62h64"/><circle cx="50" cy="50" r="34"/>
@@ -1761,6 +1780,7 @@ function renderEmpty() {
       return `<button data-go="${id}">${esc(d.n[state.lang])}</button>`;
     }).join('')}</div></div>`;
   $('#panel').querySelectorAll('[data-go]').forEach(b => b.onclick = () => select(b.dataset.go));
+  const c = $('#panel .close-empty'); if (c) c.onclick = closePanel;
 }
 
 function renderDish() {
@@ -1929,6 +1949,9 @@ function select(id, keepZoom) {
 function deselect() {
   state.dish = null; globe.active = null;
   renderEmpty();
+  // sur mobile, laisser l'écran d'accueil ouvert masquerait le globe sans
+  // qu'on puisse le refermer : on rend la main à la carte.
+  if (isSheet()) closePanel();
   const v = CONT_VIEW[state.cont];
   globe.flyTo(v.lat, v.lon, v.z);
 }
@@ -2075,6 +2098,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     onPick: m => pickMarker(m, true),
     onHover: (m, x, y) => showTip(m, x, y)
   });
+  // rendu accessible pour les tests automatisés et le diagnostic en console
+  window.theGlobe = globe;
   refreshMarkers();
   // continent chips
   const cbox = $('.continents');
