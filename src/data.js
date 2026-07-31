@@ -13,6 +13,10 @@ let WIKI = {};
 const TEXTS = {};        // lang -> { id: {n,p,d,s} }
 const LOADED = {};       // langues déjà téléchargées
 let SNAPSHOT = null;
+/* Vrai lorsque l'instantané a été construit avec la base sous la main :
+   il contient alors déjà les photos publiées et les fiches modifiées
+   depuis l'administration. Sinon, il faut aller les chercher. */
+let PHOTOS_IN_SNAPSHOT = false;
 
 const DATA_URL = 'data';
 
@@ -28,6 +32,11 @@ async function loadCore(lang) {
   SNAPSHOT = core.version;
   ING = core.ingredients;
   WIKI = {};
+  // photos déjà connues au moment de la construction : affichées sans attendre
+  if (core.photos) {
+    PHOTOS_IN_SNAPSHOT = true;
+    for (const id in core.photos) DB_PHOTO[id] = core.photos[id];
+  }
   DISHES = core.dishes.map(d => {
     if (d.wiki) WIKI[d.id] = d.wiki;
     return { id: d.id, c: d.c, lat: d.lat, lon: d.lon, base: d.base, prep: d.prep,
@@ -80,11 +89,29 @@ async function syncFromDB(lang) {
   let changed = 0;
 
   try {
-    // 1. rien n'a bougé ? on s'arrête tout de suite
+    /* Les photos publiées depuis l'administration ne sont pas toujours
+       présentes dans l'instantané : si la base n'était pas joignable au
+       moment de la construction du site, elles n'y figurent pas. On les
+       demande donc systématiquement, avant tout raccourci — c'est une
+       requête légère, et une photo manquante se voit immédiatement. */
+    if (!PHOTOS_IN_SNAPSHOT) {
+      const ps = await fetch(
+        `${SUPA.url}/rest/v1/atlas_dish_photos?select=dish_id,path,credit`, { headers: h }
+      ).then(r => r.ok ? r.json() : []).catch(() => []);
+      for (const row of ps) {
+        DB_PHOTO[row.dish_id] = {
+          url: `${SUPA.url}/storage/v1/object/public/atlas-photos/${row.path}`,
+          credit: row.credit || ''
+        };
+      }
+      if (ps.length) changed += ps.length;
+    }
+
+    // 1. rien d'autre n'a bougé ? on s'arrête là
     const v = await fetch(`${SUPA.url}/rest/v1/atlas_content_version?select=updated_at`, { headers: h })
       .then(r => r.ok ? r.json() : null).catch(() => null);
     if (v && v[0] && v[0].updated_at && new Date(v[0].updated_at) <= new Date(SNAPSHOT)) {
-      return { changed: 0 };
+      return { changed };
     }
 
     const byId = Object.fromEntries(DISHES.map(d => [d.id, d]));
@@ -117,16 +144,6 @@ async function syncFromDB(lang) {
       changed++;
     }
 
-    // 4. photos publiées depuis l'administration
-    const ps = await fetch(
-      `${SUPA.url}/rest/v1/atlas_dish_photos?select=dish_id,path,credit`, { headers: h }
-    ).then(r => r.ok ? r.json() : []).catch(() => []);
-    for (const row of ps) {
-      DB_PHOTO[row.dish_id] = {
-        url: `${SUPA.url}/storage/v1/object/public/atlas-photos/${row.path}`,
-        credit: row.credit || ''
-      };
-    }
   } catch (e) {
     // hors ligne ou base indisponible : le site continue avec l'instantané
     return { changed, offline: true };
