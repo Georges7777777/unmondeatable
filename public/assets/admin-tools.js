@@ -335,7 +335,7 @@ async function xlsxRead(buffer) {
 /* ============================================================
    recipes-xlsx.js — passage des fiches au tableur et retour.
 
-   Une ligne = une recette. Les quatre langues sont obligatoires.
+   Une ligne = une recette. Les deux langues sont obligatoires.
    Les ingrédients, eux, sont un lexique partagé par toutes les
    fiches : ils vivent dans leur propre feuille, où ils ne sont
    traduits qu'une fois. La colonne « ingrédients » d'une recette
@@ -358,17 +358,17 @@ const RX_COLS = [
   ['cook', 'cuisson (min)'],
   ['diff', 'difficulté'],
   ['tags', 'étiquettes'],
-  ['n_fr', 'nom FR'], ['n_en', 'nom EN'], ['n_es', 'nom ES'], ['n_pt', 'nom PT'],
-  ['p_fr', 'lieu FR'], ['p_en', 'lieu EN'], ['p_es', 'lieu ES'], ['p_pt', 'lieu PT'],
-  ['d_fr', 'description FR'], ['d_en', 'description EN'], ['d_es', 'description ES'], ['d_pt', 'description PT'],
-  ['s_fr', 'étapes FR'], ['s_en', 'étapes EN'], ['s_es', 'étapes ES'], ['s_pt', 'étapes PT'],
+  ['n_fr', 'nom FR'], ['n_en', 'nom EN'],
+  ['p_fr', 'lieu FR'], ['p_en', 'lieu EN'],
+  ['d_fr', 'description FR'], ['d_en', 'description EN'],
+  ['s_fr', 'étapes FR'], ['s_en', 'étapes EN'],
   ['ing', 'ingrédients'],
   ['wiki_fr', 'Wikipédia FR'], ['wiki_en', 'Wikipédia EN'],
   ['published', 'publiée'],
   ['art', 'illustration']
 ];
 const RX_WIDTHS = [22, 10, 10, 10, 10, 14, 12, 11, 24,
-  26, 26, 26, 26, 24, 24, 24, 24, 46, 46, 46, 46, 52, 52, 52, 52, 40, 20, 20, 10, 34];
+  26, 26, 24, 24, 46, 46, 52, 52, 40, 20, 20, 10, 34];
 
 /* ---------------- normalisation ---------------- */
 const rxNorm = s => String(s == null ? '' : s)
@@ -485,10 +485,10 @@ function rxDishRow(d, ingNames) {
   return [
     d.id, d.c, d.lat, d.lon, d.base, d.prep, d.cook, d.diff,
     (d.tags || []).join(', '),
-    d.n.fr || '', d.n.en || '', d.n.es || '', d.n.pt || '',
-    d.p.fr || '', d.p.en || '', d.p.es || '', d.p.pt || '',
-    d.d.fr || '', d.d.en || '', d.d.es || '', d.d.pt || '',
-    steps('fr'), steps('en'), steps('es'), steps('pt'),
+    d.n.fr || '', d.n.en || '',
+    d.p.fr || '', d.p.en || '',
+    d.d.fr || '', d.d.en || '',
+    steps('fr'), steps('en'),
     (d.i || []).map(t => rxFormatIng(t, ingNames)).join('\n'),
     (WIKI[d.id] && WIKI[d.id][1]) || '', (WIKI[d.id] && WIKI[d.id][0]) || '',
     d._hidden ? 'non' : 'oui',
@@ -502,8 +502,8 @@ function rxBuildWorkbook(dishes, ing) {
 
   const recettes = [RX_COLS.map(c => c[1]), ...dishes.map(d => rxDishRow(d, ingNames))];
 
-  const ingRows = [['identifiant', 'français', 'anglais', 'espagnol', 'portugais'],
-  ...Object.keys(ing).sort().map(id => [id, ing[id][0], ing[id][1], ing[id][2], ing[id][3]])];
+  const ingRows = [['identifiant', 'français', 'anglais'],
+  ...Object.keys(ing).sort().map(id => [id, ing[id][0], ing[id][1]])];
 
   const conts = { eu: 'Europe', as: 'Asie', af: 'Afrique', na: 'Amérique du Nord', sa: 'Amérique du Sud', oc: 'Océanie' };
   const listes = [['continent', 'libellé', '', 'difficulté', 'libellé', '', 'étiquette', 'libellé', '', 'unité', 'libellé']];
@@ -522,7 +522,7 @@ function rxBuildWorkbook(dishes, ing) {
   return [
     { name: RX_HELP_SHEET, rows: rxHelpRows(), widths: [104] },
     { name: RX_SHEET, rows: recettes, widths: RX_WIDTHS, freeze: true },
-    { name: RX_ING_SHEET, rows: ingRows, widths: [26, 32, 32, 32, 32], freeze: true },
+    { name: RX_ING_SHEET, rows: ingRows, widths: [26, 34, 34], freeze: true },
     { name: RX_LIST_SHEET, rows: listes, widths: [14, 20, 3, 12, 14, 3, 16, 22, 3, 12, 18], freeze: true }
   ];
 }
@@ -544,7 +544,7 @@ function rxHelpRows() {
     ['personnes — nombre de convives pour lequel les quantités sont indiquées.'],
     ['difficulté — 1 facile, 2 moyen, 3 difficile.'],
     ['étiquettes — codes séparés par des virgules, par exemple : sea, sunday (voir « Listes »).'],
-    ['nom / lieu / description / étapes — les quatre langues sont obligatoires (FR, EN, ES, PT).'],
+    ['nom / lieu / description / étapes — les deux langues sont obligatoires (FR et EN).'],
     ['                Dans les étapes, une ligne par étape (Alt + Entrée dans Excel pour aller à la ligne).'],
     ['ingrédients — une ligne par ingrédient, sous la forme : quantité, unité, nom français.'],
     ['                Exemples :  1200 g poisson de roche   ·   4 gousses ail   ·   6 c. à soupe huile d’olive'],
@@ -581,18 +581,14 @@ function rxReadIngSheet(rows) {
   if (!rows || !rows.length) return out;
   const head = rows[0].map(rxNorm);
   const col = names => { for (const n of names) { const i = head.indexOf(n); if (i >= 0) return i; } return -1; };
-  const ci = col(['identifiant', 'id']), cf = col(['francais', 'fr']), ce = col(['anglais', 'en']),
-    cs = col(['espagnol', 'es']), cp = col(['portugais', 'pt']);
+  const ci = col(['identifiant', 'id']), cf = col(['francais', 'fr']), ce = col(['anglais', 'en']);
   if (cf < 0) return out;
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r] || [];
     const fr = String(row[cf] || '').trim();
     if (!fr) continue;
     const id = String((ci >= 0 && row[ci]) || '').trim() || rxSlug(fr).replace(/-/g, '_');
-    out[id] = [fr,
-      String((ce >= 0 && row[ce]) || '').trim() || fr,
-      String((cs >= 0 && row[cs]) || '').trim() || fr,
-      String((cp >= 0 && row[cp]) || '').trim() || fr];
+    out[id] = [fr, String((ce >= 0 && row[ce]) || '').trim() || fr];
   }
   return out;
 }
@@ -688,7 +684,7 @@ function rxParseWorkbook(sheets, existing, lexicon) {
       if (!id) {
         id = rxSlug(p.name).replace(/-/g, '_');
         byName[key] = id;
-        newIng[id] = [p.name, p.name, p.name, p.name];
+        newIng[id] = [p.name, p.name];
         rec.warnings.push('nouvel ingrédient : ' + p.name);
       }
       rec.ingredients.push([id, p.qty, p.qty == null ? '' : p.unit]);
@@ -753,7 +749,7 @@ function downloadBytes(bytes, filename) {
 
 /* ---------------- export ---------------- */
 async function exportXlsx() {
-  // le classeur contient les quatre langues : il faut donc les avoir toutes
+  // le classeur contient les deux langues : il faut donc les avoir toutes
   for (const l of LANGS) if (!LOADED[l]) await loadLang(l);
   const sheets = rxBuildWorkbook(DISHES, ING);
   const bytes = await xlsxWrite(sheets);
@@ -791,7 +787,7 @@ async function applyImport(records, newIngredients, onProgress) {
   const say = m => { if (onProgress) onProgress(m); };
 
   const ingRows = Object.entries(newIngredients).map(([id, v]) =>
-    ({ id, fr: v[0], en: v[1], es: v[2], pt: v[3] }));
+    ({ id, fr: v[0], en: v[1] }));
   if (ingRows.length) { say(`Lexique : ${ingRows.length} ingrédient(s)…`); await sbUpsert('atlas_ingredients', ingRows, 'id'); }
 
   let rank = DISHES.reduce((m, d) => Math.max(m, d.rank || 0), 0);
@@ -862,7 +858,7 @@ function openImportPreview(res) {
       <div class="implist plain bad">${rejets.map(r => `<div><b>ligne ${r.line}</b>
         <small>${esc(r.errors.join(' · '))}</small></div>`).join('')}</div>` : ''}
     ${nbIng ? `<h4>Ingrédients créés</h4>
-      <p class="note">Ils prennent d’abord le nom français dans les quatre langues. Pour les traduire,
+      <p class="note">Ils prennent d’abord le nom français comme traduction anglaise. Pour les corriger,
       exportez le classeur et complétez la feuille « Ingrédients ».<br>
       ${Object.values(res.newIngredients).map(v => esc(v[0])).slice(0, 24).join(' · ')}${nbIng > 24 ? ' …' : ''}</p>` : ''}
     <p class="err" hidden></p>

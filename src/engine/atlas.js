@@ -126,7 +126,7 @@ async function atlasDetails(q, lang) {
     const j = await apiGet(`https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&origin=*&ids=${q}&props=sitelinks|descriptions&languages=${LANGS.join('|')}&sitefilter=${sites}`);
     const ent = j.entities && j.entities[q];
     if (ent) {
-      const order = [lang, 'en', 'fr', 'es', 'pt'];
+      const order = [lang, 'en', 'fr'];
       for (const l of order) {
         const sl = ent.sitelinks && ent.sitelinks[l + 'wiki'];
         if (sl) { out.title = sl.title; out.wikilang = l; break; }

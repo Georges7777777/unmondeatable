@@ -2,7 +2,7 @@
 /* ============================================================
    i18n — interface, units, tags
    ============================================================ */
-const LANGS = ['fr', 'en', 'es', 'pt'];
+const LANGS = ['fr', 'en'];
 const UI = {
   fr: {
     tagline: 'Le Goût du Monde', title1: 'Un monde à', title2: 'table',
@@ -51,128 +51,80 @@ const UI = {
     photoBadType: 'Please choose an image file',
     loadError: 'Could not load, check your connection',
     atlas: 'World atlas', atlasHelp: 'Adds hundreds of dishes from Wikidata (no recipe)', atlasLoading: 'loading atlas…', atlasPoints: 'markers', atlasFail: 'atlas unavailable', encyclo: 'Encyclopaedic entry', noRecipe: 'This dish comes from the Wikidata atlas: no recipe has been written for it yet.', readMore: 'Read on Wikipedia'
-  },
-  es: {
-    tagline: 'El Sabor del Mundo', title1: 'Un mundo a la', title2: 'mesa',
-    search: 'Buscar un plato, un país…', noRes: 'Sin resultados',
-    emptyTitle: 'Gira el globo',
-    emptyText: 'Haz clic en un punto dorado para descubrir una especialidad local, su receta y sus ingredientes — ajustados al número de comensales.',
-    suggest: 'O déjate tentar:',
-    ingredients: 'Ingredientes', method: 'Preparación', servings: '¿Para cuántas personas?',
-    people: 'pers.', prep: 'Preparación', cook: 'Cocción', diff: 'Dificultad',
-    min: 'min', h: 'h', nearby: 'Más de esta región', close: 'Cerrar',
-    toTaste: 'al gusto', hint: 'Arrastra para girar · rueda para acercar · haz clic en un punto',
-    all: 'Todo el mundo', spec: 'especialidades', of: 'de',
-    diffs: ['Fácil', 'Media', 'Exigente'],
-    conts: { eu: 'Europa', as: 'Asia', af: 'África', na: 'América del Norte', sa: 'América del Sur', oc: 'Oceanía' },
-    reset: 'Vista mundial', photoBy: 'Foto:', photoOff: 'Foto no disponible — ilustración',
-    sameCity: 'Otras especialidades de la ciudad',
-    photoAdd: 'Añadir una foto', photoChange: 'Cambiar la foto',
-    photoEditHelp: 'Suba su propia foto para este plato',
-    photoReset: 'Volver a la foto original', photoMine: 'Su foto',
-    photoSaving: 'Guardando…', photoSaved: 'Foto guardada',
-    photoRemoved: 'Foto personal eliminada', photoError: 'No se pudo guardar esta imagen',
-    photoBadType: 'Elija un archivo de imagen',
-    loadError: 'No se pudo cargar, compruebe su conexión',
-    atlas: 'Atlas mundial', atlasHelp: 'Añade cientos de platos de Wikidata (sin receta)', atlasLoading: 'cargando el atlas…', atlasPoints: 'marcadores', atlasFail: 'atlas no disponible', encyclo: 'Ficha enciclopédica', noRecipe: 'Este plato procede del atlas de Wikidata: todavía no tiene receta redactada.', readMore: 'Leer en Wikipedia'
-  },
-  pt: {
-    tagline: 'O Sabor do Mundo', title1: 'Um mundo à', title2: 'mesa',
-    search: 'Procurar um prato, um país…', noRes: 'Sem resultados',
-    emptyTitle: 'Gire o globo',
-    emptyText: 'Clique num ponto dourado para descobrir uma especialidade local, a sua receita e os seus ingredientes — ajustados ao número de convidados.',
-    suggest: 'Ou deixe-se tentar:',
-    ingredients: 'Ingredientes', method: 'Preparação', servings: 'Para quantas pessoas?',
-    people: 'pess.', prep: 'Preparo', cook: 'Cozedura', diff: 'Dificuldade',
-    min: 'min', h: 'h', nearby: 'Mais desta região', close: 'Fechar',
-    toTaste: 'a gosto', hint: 'Arraste para girar · roda para ampliar · clique num ponto',
-    all: 'Mundo inteiro', spec: 'especialidades', of: 'de',
-    diffs: ['Fácil', 'Médio', 'Exigente'],
-    conts: { eu: 'Europa', as: 'Ásia', af: 'África', na: 'América do Norte', sa: 'América do Sul', oc: 'Oceania' },
-    reset: 'Vista mundial', photoBy: 'Foto:', photoOff: 'Foto indisponível — ilustração',
-    sameCity: 'Outras especialidades da cidade',
-    photoAdd: 'Adicionar uma foto', photoChange: 'Mudar a foto',
-    photoEditHelp: 'Carregue a sua própria foto para este prato',
-    photoReset: 'Voltar à foto original', photoMine: 'A sua foto',
-    photoSaving: 'A guardar…', photoSaved: 'Foto guardada',
-    photoRemoved: 'Foto pessoal removida', photoError: 'Não foi possível guardar esta imagem',
-    photoBadType: 'Escolha um ficheiro de imagem',
-    loadError: 'Não foi possível carregar, verifique a ligação',
-    atlas: 'Atlas mundial', atlasHelp: 'Acrescenta centenas de pratos da Wikidata (sem receita)', atlasLoading: 'a carregar o atlas…', atlasPoints: 'marcadores', atlasFail: 'atlas indisponível', encyclo: 'Ficha enciclopédica', noRecipe: 'Este prato vem do atlas Wikidata: ainda não tem receita redigida.', readMore: 'Ler na Wikipédia'
   }
 };
 
-/* units: [fr, en, es, pt] — singular form; g/ml/etc are invariable */
+/* units: [fr, en] — singular form; g/ml/etc are invariable */
 const UNITS = {
-  g: ['g', 'g', 'g', 'g'],
-  kg: ['kg', 'kg', 'kg', 'kg'],
-  ml: ['ml', 'ml', 'ml', 'ml'],
-  cl: ['cl', 'cl', 'cl', 'cl'],
-  l: ['l', 'l', 'l', 'l'],
-  pc: ['', '', '', ''],
-  tbsp: ['c. à soupe', 'tbsp', 'cda', 'c. sopa'],
-  tsp: ['c. à café', 'tsp', 'cdta', 'c. chá'],
-  pinch: ['pincée', 'pinch', 'pizca', 'pitada'],
-  clove: ['gousse', 'clove', 'diente', 'dente'],
-  bunch: ['bouquet', 'bunch', 'manojo', 'molho'],
-  slice: ['tranche', 'slice', 'rebanada', 'fatia'],
-  sprig: ['brin', 'sprig', 'ramita', 'raminho'],
-  cup: ['tasse', 'cup', 'taza', 'chávena'],
-  can: ['boîte', 'can', 'lata', 'lata'],
-  sheet: ['feuille', 'sheet', 'hoja', 'folha'],
-  stick: ['bâton', 'stick', 'rama', 'pau'],
-  drizzle: ['filet', 'drizzle', 'chorrito', 'fio'],
-  stalk: ['branche', 'stalk', 'penca', 'talo'],
-  drop: ['goutte', 'drop', 'gota', 'gota']
+  g: ['g', 'g'],
+  kg: ['kg', 'kg'],
+  ml: ['ml', 'ml'],
+  cl: ['cl', 'cl'],
+  l: ['l', 'l'],
+  pc: ['', ''],
+  tbsp: ['c. à soupe', 'tbsp'],
+  tsp: ['c. à café', 'tsp'],
+  pinch: ['pincée', 'pinch'],
+  clove: ['gousse', 'clove'],
+  bunch: ['bouquet', 'bunch'],
+  slice: ['tranche', 'slice'],
+  sprig: ['brin', 'sprig'],
+  cup: ['tasse', 'cup'],
+  can: ['boîte', 'can'],
+  sheet: ['feuille', 'sheet'],
+  stick: ['bâton', 'stick'],
+  drizzle: ['filet', 'drizzle'],
+  stalk: ['branche', 'stalk'],
+  drop: ['goutte', 'drop']
 };
-/* plural forms where needed (fr/en/es/pt) */
+/* plural forms where needed (fr/en) */
 const UNITS_PL = {
-  tbsp: ['c. à soupe', 'tbsp', 'cdas', 'c. sopa'],
-  tsp: ['c. à café', 'tsp', 'cdtas', 'c. chá'],
-  pinch: ['pincées', 'pinches', 'pizcas', 'pitadas'],
-  clove: ['gousses', 'cloves', 'dientes', 'dentes'],
-  bunch: ['bouquets', 'bunches', 'manojos', 'molhos'],
-  slice: ['tranches', 'slices', 'rebanadas', 'fatias'],
-  sprig: ['brins', 'sprigs', 'ramitas', 'raminhos'],
-  cup: ['tasses', 'cups', 'tazas', 'chávenas'],
-  can: ['boîtes', 'cans', 'latas', 'latas'],
-  sheet: ['feuilles', 'sheets', 'hojas', 'folhas'],
-  stick: ['bâtons', 'sticks', 'ramas', 'paus'],
-  drizzle: ['filets', 'drizzles', 'chorritos', 'fios'],
-  stalk: ['branches', 'stalks', 'pencas', 'talos'],
-  drop: ['gouttes', 'drops', 'gotas', 'gotas']
+  tbsp: ['c. à soupe', 'tbsp'],
+  tsp: ['c. à café', 'tsp'],
+  pinch: ['pincées', 'pinches'],
+  clove: ['gousses', 'cloves'],
+  bunch: ['bouquets', 'bunches'],
+  slice: ['tranches', 'slices'],
+  sprig: ['brins', 'sprigs'],
+  cup: ['tasses', 'cups'],
+  can: ['boîtes', 'cans'],
+  sheet: ['feuilles', 'sheets'],
+  stick: ['bâtons', 'sticks'],
+  drizzle: ['filets', 'drizzles'],
+  stalk: ['branches', 'stalks'],
+  drop: ['gouttes', 'drops']
 };
 
 const TAGS = {
-  street: ['Street food', 'Street food', 'Comida callejera', 'Comida de rua'],
-  sunday: ['Plat du dimanche', 'Sunday dish', 'Plato dominguero', 'Prato de domingo'],
-  festive: ['Fête', 'Festive', 'Fiesta', 'Festivo'],
-  comfort: ['Réconfortant', 'Comfort food', 'Reconfortante', 'Reconfortante'],
-  sea: ['Produits de la mer', 'Seafood', 'Marisco', 'Frutos do mar'],
-  veg: ['Végétarien', 'Vegetarian', 'Vegetariano', 'Vegetariano'],
-  spicy: ['Épicé', 'Spicy', 'Picante', 'Picante'],
-  slow: ['Mijoté', 'Slow-cooked', 'Guisado', 'Cozinhado lentamente'],
-  grill: ['Grillé', 'Grilled', 'A la parrilla', 'Grelhado'],
-  sweet: ['Sucré', 'Sweet', 'Dulce', 'Doce'],
-  soup: ['Soupe', 'Soup', 'Sopa', 'Sopa'],
-  breakfast: ['Petit-déjeuner', 'Breakfast', 'Desayuno', 'Pequeno-almoço'],
-  bake: ['Au four', 'Baked', 'Al horno', 'No forno'],
-  fresh: ['Cru & frais', 'Raw & fresh', 'Crudo y fresco', 'Cru e fresco'],
-  rice: ['Riz', 'Rice', 'Arroz', 'Arroz'],
-  noodles: ['Nouilles', 'Noodles', 'Fideos', 'Massa'],
-  bread: ['Pain & pâte', 'Bread & dough', 'Pan y masa', 'Pão e massa'],
-  stew: ['Ragoût', 'Stew', 'Estofado', 'Ensopado'],
-  legume: ['Légumineuses', 'Pulses', 'Legumbres', 'Leguminosas'],
-  poultry: ['Volaille', 'Poultry', 'Aves', 'Aves'],
-  beef: ['Bœuf', 'Beef', 'Ternera', 'Carne de vaca'],
-  lamb: ['Agneau', 'Lamb', 'Cordero', 'Borrego'],
-  pork: ['Porc', 'Pork', 'Cerdo', 'Porco'],
-  cheese: ['Fromage', 'Cheese', 'Queso', 'Queijo'],
-  fry: ['Frit', 'Fried', 'Frito', 'Frito'],
-  drink: ['Boisson', 'Drink', 'Bebida', 'Bebida'],
-  fast: ['Rapide', 'Quick', 'Rápido', 'Rápido'],
-  fruit: ['Fruit', 'Fruit', 'Fruta', 'Fruta'],
-  raw: ['Cru', 'Raw', 'Crudo', 'Cru']
+  street: ['Street food', 'Street food'],
+  sunday: ['Plat du dimanche', 'Sunday dish'],
+  festive: ['Fête', 'Festive'],
+  comfort: ['Réconfortant', 'Comfort food'],
+  sea: ['Produits de la mer', 'Seafood'],
+  veg: ['Végétarien', 'Vegetarian'],
+  spicy: ['Épicé', 'Spicy'],
+  slow: ['Mijoté', 'Slow-cooked'],
+  grill: ['Grillé', 'Grilled'],
+  sweet: ['Sucré', 'Sweet'],
+  soup: ['Soupe', 'Soup'],
+  breakfast: ['Petit-déjeuner', 'Breakfast'],
+  bake: ['Au four', 'Baked'],
+  fresh: ['Cru & frais', 'Raw & fresh'],
+  rice: ['Riz', 'Rice'],
+  noodles: ['Nouilles', 'Noodles'],
+  bread: ['Pain & pâte', 'Bread & dough'],
+  stew: ['Ragoût', 'Stew'],
+  legume: ['Légumineuses', 'Pulses'],
+  poultry: ['Volaille', 'Poultry'],
+  beef: ['Bœuf', 'Beef'],
+  lamb: ['Agneau', 'Lamb'],
+  pork: ['Porc', 'Pork'],
+  cheese: ['Fromage', 'Cheese'],
+  fry: ['Frit', 'Fried'],
+  drink: ['Boisson', 'Drink'],
+  fast: ['Rapide', 'Quick'],
+  fruit: ['Fruit', 'Fruit'],
+  raw: ['Cru', 'Raw']
 };
 
 /* ===== data.js ===== */
@@ -1036,7 +988,7 @@ async function atlasDetails(q, lang) {
     const j = await apiGet(`https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&origin=*&ids=${q}&props=sitelinks|descriptions&languages=${LANGS.join('|')}&sitefilter=${sites}`);
     const ent = j.entities && j.entities[q];
     if (ent) {
-      const order = [lang, 'en', 'fr', 'es', 'pt'];
+      const order = [lang, 'en', 'fr'];
       for (const l of order) {
         const sl = ent.sitelinks && ent.sitelinks[l + 'wiki'];
         if (sl) { out.title = sl.title; out.wikilang = l; break; }

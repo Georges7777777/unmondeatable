@@ -23,7 +23,7 @@ function downloadBytes(bytes, filename) {
 
 /* ---------------- export ---------------- */
 async function exportXlsx() {
-  // le classeur contient les quatre langues : il faut donc les avoir toutes
+  // le classeur contient les deux langues : il faut donc les avoir toutes
   for (const l of LANGS) if (!LOADED[l]) await loadLang(l);
   const sheets = rxBuildWorkbook(DISHES, ING);
   const bytes = await xlsxWrite(sheets);
@@ -61,7 +61,7 @@ async function applyImport(records, newIngredients, onProgress) {
   const say = m => { if (onProgress) onProgress(m); };
 
   const ingRows = Object.entries(newIngredients).map(([id, v]) =>
-    ({ id, fr: v[0], en: v[1], es: v[2], pt: v[3] }));
+    ({ id, fr: v[0], en: v[1] }));
   if (ingRows.length) { say(`Lexique : ${ingRows.length} ingrédient(s)…`); await sbUpsert('atlas_ingredients', ingRows, 'id'); }
 
   let rank = DISHES.reduce((m, d) => Math.max(m, d.rank || 0), 0);
@@ -132,7 +132,7 @@ function openImportPreview(res) {
       <div class="implist plain bad">${rejets.map(r => `<div><b>ligne ${r.line}</b>
         <small>${esc(r.errors.join(' · '))}</small></div>`).join('')}</div>` : ''}
     ${nbIng ? `<h4>Ingrédients créés</h4>
-      <p class="note">Ils prennent d’abord le nom français dans les quatre langues. Pour les traduire,
+      <p class="note">Ils prennent d’abord le nom français comme traduction anglaise. Pour les corriger,
       exportez le classeur et complétez la feuille « Ingrédients ».<br>
       ${Object.values(res.newIngredients).map(v => esc(v[0])).slice(0, 24).join(' · ')}${nbIng > 24 ? ' …' : ''}</p>` : ''}
     <p class="err" hidden></p>
