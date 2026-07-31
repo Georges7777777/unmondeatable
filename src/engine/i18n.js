@@ -120,7 +120,9 @@ const UNITS = {
   can: ['boîte', 'can', 'lata', 'lata'],
   sheet: ['feuille', 'sheet', 'hoja', 'folha'],
   stick: ['bâton', 'stick', 'rama', 'pau'],
-  drizzle: ['filet', 'drizzle', 'chorrito', 'fio']
+  drizzle: ['filet', 'drizzle', 'chorrito', 'fio'],
+  stalk: ['branche', 'stalk', 'penca', 'talo'],
+  drop: ['goutte', 'drop', 'gota', 'gota']
 };
 /* plural forms where needed (fr/en/es/pt) */
 const UNITS_PL = {
@@ -135,7 +137,9 @@ const UNITS_PL = {
   can: ['boîtes', 'cans', 'latas', 'latas'],
   sheet: ['feuilles', 'sheets', 'hojas', 'folhas'],
   stick: ['bâtons', 'sticks', 'ramas', 'paus'],
-  drizzle: ['filets', 'drizzles', 'chorritos', 'fios']
+  drizzle: ['filets', 'drizzles', 'chorritos', 'fios'],
+  stalk: ['branches', 'stalks', 'pencas', 'talos'],
+  drop: ['gouttes', 'drops', 'gotas', 'gotas']
 };
 
 const TAGS = {

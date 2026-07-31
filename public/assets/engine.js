@@ -121,7 +121,9 @@ const UNITS = {
   can: ['boîte', 'can', 'lata', 'lata'],
   sheet: ['feuille', 'sheet', 'hoja', 'folha'],
   stick: ['bâton', 'stick', 'rama', 'pau'],
-  drizzle: ['filet', 'drizzle', 'chorrito', 'fio']
+  drizzle: ['filet', 'drizzle', 'chorrito', 'fio'],
+  stalk: ['branche', 'stalk', 'penca', 'talo'],
+  drop: ['goutte', 'drop', 'gota', 'gota']
 };
 /* plural forms where needed (fr/en/es/pt) */
 const UNITS_PL = {
@@ -136,7 +138,9 @@ const UNITS_PL = {
   can: ['boîtes', 'cans', 'latas', 'latas'],
   sheet: ['feuilles', 'sheets', 'hojas', 'folhas'],
   stick: ['bâtons', 'sticks', 'ramas', 'paus'],
-  drizzle: ['filets', 'drizzles', 'chorritos', 'fios']
+  drizzle: ['filets', 'drizzles', 'chorritos', 'fios'],
+  stalk: ['branches', 'stalks', 'pencas', 'talos'],
+  drop: ['gouttes', 'drops', 'gotas', 'gotas']
 };
 
 const TAGS = {
@@ -1532,9 +1536,15 @@ class Globe {
     for (let i = this._screen ? this._screen.length - 1 : -1; i >= 0; i--) {
       const s = this._screen[i];
       const d = (s.x - sx) ** 2 + (s.y - sy) ** 2;
-      if (d < bd) { bd = d; best = s.m; }
+      if (d < bd) { bd = d; best = s; }
     }
-    return best;
+    if (!best) return null;
+    // Le point retenu peut en masquer d'autres (même ville) : on transmet la
+    // liste pour que l'interface propose de choisir, plutôt que de trancher.
+    best.m.groupIds = best.group || null;
+    best.m.groupN = best.n;
+    best.m.sx = best.x; best.m.sy = best.y;
+    return best.m;
   }
 
   /* ---------- interaction ---------- */
@@ -1990,6 +2000,12 @@ function setServings(n) {
 /* ---------- selection ---------- */
 function pickMarker(m, keepZoom) {
   if (m.kind === 'atlas') return selectAtlas(m, keepZoom);
+  // au doigt il n'y a pas de survol : le clic ouvre lui aussi la liste
+  if (groupable(m)) {
+    const r = $('#globe').getBoundingClientRect();
+    showPlaceMenu(m, r.left + m.sx, r.top + m.sy);
+    return;
+  }
   select(m.id, keepZoom);
 }
 function selectAtlas(m, keepZoom) {
@@ -2003,6 +2019,7 @@ function selectAtlas(m, keepZoom) {
 function select(id, keepZoom) {
   const d = DISHES.find(x => x.id === id);
   if (!d) return;
+  hidePlaceMenu();
   state.dish = d; state.servings = d.base;
   globe.active = id;
   globe.flyTo(d.lat, d.lon, keepZoom ? Math.max(globe.tZoom, 3.2) : 4.2);
@@ -2016,8 +2033,9 @@ function deselect() {
   // sur mobile, laisser l'écran d'accueil ouvert masquerait le globe sans
   // qu'on puisse le refermer : on rend la main à la carte.
   if (isSheet()) closePanel();
-  const v = CONT_VIEW[state.cont];
-  globe.flyTo(v.lat, v.lon, v.z);
+  // On ne touche ni au cadrage ni au zoom : fermer une fiche, c'est reprendre
+  // l'exploration là où on l'avait laissée. Le bouton ↺ sert à revenir au monde.
+  globe.autoSpin = false;
 }
 
 /* ---------- markers / filter ---------- */
@@ -2128,6 +2146,12 @@ async function setLang(l) {
 /* ---------- tooltip ---------- */
 let tipEl;
 function showTip(m, x, y) {
+  // plusieurs spécialités sous le même point, et l'on est assez près du sol
+  // pour que ce soit vraiment le même lieu : on propose de choisir
+  if (m && groupable(m)) { hideTip(); showPlaceMenu(m, x, y); return; }
+  // fermeture différée : on doit pouvoir sortir du globe pour aller cliquer
+  // dans la liste sans qu'elle se dérobe
+  scheduleHideMenu();
   if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tip'; document.body.appendChild(tipEl); }
   if (!m) { tipEl.classList.remove('on'); return; }
   const d = DISHES.find(z => z.id === m.id);
@@ -2138,6 +2162,62 @@ function showTip(m, x, y) {
   }
   tipEl.style.left = (x + 16) + 'px'; tipEl.style.top = (y - 10) + 'px';
   tipEl.classList.add('on');
+}
+function hideTip() { if (tipEl) tipEl.classList.remove('on'); }
+
+/* ---------- liste des recettes d'un même lieu ----------
+   En vue rapprochée, un point qui en cache d'autres cesse d'être un
+   raccourci vers la fiche la mieux classée : il ouvre la liste complète
+   des spécialités de l'endroit, et c'est vous qui choisissez. */
+const PLACE_MENU_ZOOM = 5;   // en deçà, les points groupés couvrent une région entière
+const groupable = m =>
+  !!(m && m.kind !== 'atlas' && m.groupIds && m.groupIds.length && globe && globe.zoom >= PLACE_MENU_ZOOM);
+
+let menuEl, menuTimer, menuFor = null;
+function ensureMenu() {
+  if (menuEl) return menuEl;
+  menuEl = document.createElement('div');
+  menuEl.className = 'placemenu';
+  // la souris doit pouvoir quitter le globe pour venir cliquer dans la liste
+  menuEl.addEventListener('pointerenter', () => clearTimeout(menuTimer));
+  menuEl.addEventListener('pointerleave', () => scheduleHideMenu());
+  document.body.appendChild(menuEl);
+  return menuEl;
+}
+function scheduleHideMenu() {
+  clearTimeout(menuTimer);
+  menuTimer = setTimeout(hidePlaceMenu, 260);
+}
+function hidePlaceMenu() {
+  clearTimeout(menuTimer);
+  if (menuEl) menuEl.classList.remove('on');
+  menuFor = null;
+}
+function showPlaceMenu(m, x, y) {
+  clearTimeout(menuTimer);
+  const ids = [m.id, ...m.groupIds];
+  const list = ids.map(id => DISHES.find(d => d.id === id)).filter(Boolean);
+  if (list.length < 2) { hidePlaceMenu(); return; }
+  const el = ensureMenu();
+  if (menuFor !== m.id) {
+    el.innerHTML = `<div class="ttl">${esc(list[0].p[state.lang])}
+        <small>${list.length} ${t('spec')}</small></div>
+      <div class="rows">${list.map(d => `<button data-go="${d.id}">
+        <span class="th" data-th="${d.id}">${dishSVG(d, 72)}</span>
+        <span class="tx"><b>${esc(d.n[state.lang])}</b><small>${esc(TAGS[d.tags[0]] ? TAGS[d.tags[0]][L()] : '')}</small></span>
+      </button>`).join('')}</div>`;
+    el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
+      hidePlaceMenu(); select(b.dataset.go, true);
+    });
+    list.forEach(d => fillPhoto(el.querySelector(`[data-th="${d.id}"]`), d, null));
+    menuFor = m.id;
+  }
+  el.classList.add('on');
+  // on garde la liste dans l'écran
+  const r = el.getBoundingClientRect();
+  const left = Math.min(Math.max(8, x + 18), window.innerWidth - r.width - 8);
+  const top = Math.min(Math.max(8, y - 24), window.innerHeight - r.height - 8);
+  el.style.left = left + 'px'; el.style.top = top + 'px';
 }
 let hintTimer;
 function hideHint() { const h = $('#hint'); if (h) h.style.opacity = 0; }
@@ -2185,6 +2265,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   });
   document.addEventListener('click', e => {
     if (!e.target.closest('.search')) $('#results').classList.remove('on');
+    // au doigt, toucher ailleurs referme la liste d'un lieu
+    if (!e.target.closest('.placemenu') && e.target.id !== 'globe') hidePlaceMenu();
   });
   $('#zin').onclick = () => globe.setZoom(globe.tZoom * 1.5);
   $('#zout').onclick = () => globe.setZoom(globe.tZoom / 1.5);
@@ -2230,6 +2312,24 @@ function adminBar() {
   const out = bar.querySelector('#admOut'), inb = bar.querySelector('#admIn');
   if (out) out.onclick = () => { adminLogout(); adminBar(); if (state.dish) renderDish(); flash('Déconnecté'); };
   if (inb) inb.onclick = openLogin;
+  // export / modèle / import du classeur Excel
+  if (IS_ADMIN) loadAdminTools().then(() => xlsxBar(bar)).catch(() => { });
+}
+
+/* Les outils tableur pèsent 16 Ko compressés, inutiles aux visiteurs :
+   on ne les télécharge qu'à l'ouverture de la barre d'administration. */
+let adminToolsP;
+function loadAdminTools() {
+  if (typeof xlsxBar === 'function') return Promise.resolve();
+  if (adminToolsP) return adminToolsP;
+  adminToolsP = new Promise((ok, ko) => {
+    const s = document.createElement('script');
+    s.src = 'assets/admin-tools.js';
+    s.onload = ok;
+    s.onerror = () => { adminToolsP = null; ko(new Error('Outils tableur indisponibles')); };
+    document.head.appendChild(s);
+  });
+  return adminToolsP;
 }
 
 function openLogin() {

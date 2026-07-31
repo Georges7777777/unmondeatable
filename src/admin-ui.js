@@ -19,6 +19,24 @@ function adminBar() {
   const out = bar.querySelector('#admOut'), inb = bar.querySelector('#admIn');
   if (out) out.onclick = () => { adminLogout(); adminBar(); if (state.dish) renderDish(); flash('Déconnecté'); };
   if (inb) inb.onclick = openLogin;
+  // export / modèle / import du classeur Excel
+  if (IS_ADMIN) loadAdminTools().then(() => xlsxBar(bar)).catch(() => { });
+}
+
+/* Les outils tableur pèsent 16 Ko compressés, inutiles aux visiteurs :
+   on ne les télécharge qu'à l'ouverture de la barre d'administration. */
+let adminToolsP;
+function loadAdminTools() {
+  if (typeof xlsxBar === 'function') return Promise.resolve();
+  if (adminToolsP) return adminToolsP;
+  adminToolsP = new Promise((ok, ko) => {
+    const s = document.createElement('script');
+    s.src = 'assets/admin-tools.js';
+    s.onload = ok;
+    s.onerror = () => { adminToolsP = null; ko(new Error('Outils tableur indisponibles')); };
+    document.head.appendChild(s);
+  });
+  return adminToolsP;
 }
 
 function openLogin() {

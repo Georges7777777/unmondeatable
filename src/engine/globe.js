@@ -459,9 +459,15 @@ class Globe {
     for (let i = this._screen ? this._screen.length - 1 : -1; i >= 0; i--) {
       const s = this._screen[i];
       const d = (s.x - sx) ** 2 + (s.y - sy) ** 2;
-      if (d < bd) { bd = d; best = s.m; }
+      if (d < bd) { bd = d; best = s; }
     }
-    return best;
+    if (!best) return null;
+    // Le point retenu peut en masquer d'autres (même ville) : on transmet la
+    // liste pour que l'interface propose de choisir, plutôt que de trancher.
+    best.m.groupIds = best.group || null;
+    best.m.groupN = best.n;
+    best.m.sx = best.x; best.m.sy = best.y;
+    return best.m;
   }
 
   /* ---------- interaction ---------- */
