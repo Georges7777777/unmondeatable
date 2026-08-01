@@ -344,6 +344,60 @@ function adminLogout() {
   localStorage.removeItem(SESSION_KEY);
 }
 
+/* ---------- la fiche existe-t-elle en base ? ----------
+   Les tables des textes et des photos référencent atlas_dishes(dish_id).
+   Une fiche présente dans l'instantané mais jamais importée dans la base
+   n'y a pas de ligne : PostgreSQL refuse alors l'écriture, et PostgREST
+   traduit ce refus par un 409. On sème donc la fiche à la volée, à partir
+   des données locales, avant toute écriture qui en dépend. */
+const DISH_ROW_OK = new Set();
+
+function dishRowFrom(d) {
+  const row = {
+    id: d.id, continent: d.c, lat: d.lat, lon: d.lon,
+    base: d.base, prep: d.prep, cook: d.cook, diff: d.diff,
+    tags: d.tags || [], art: d.art || {}, ingredients: d.i || [],
+    wiki: (typeof WIKI !== 'undefined' && WIKI[d.id]) || null,
+    published: true
+  };
+  // le rang n'est renseigné que si on le connaît : l'omettre laisse
+  // intacte la valeur déjà en base plutôt que de la remettre à zéro
+  if (d.rank != null) row.rank = d.rank;
+  return row;
+}
+
+async function ensureDishRow(dishId) {
+  if (DISH_ROW_OK.has(dishId)) return;
+  const d = DISHES.find(x => x.id === dishId);
+  if (!d) throw new Error('Fiche introuvable : ' + dishId);
+
+  // on regarde avant d'écrire : une fiche déjà en base ne doit rien
+  // perdre de ce que l'administration y a mis (rang, retouches…)
+  const look = await fetch(
+    `${SB.url}/rest/v1/atlas_dishes?id=eq.${encodeURIComponent(dishId)}&select=id`,
+    { headers: authHeaders() });
+  if (look.ok && (await look.json()).length) { DISH_ROW_OK.add(dishId); return; }
+
+  const r = await fetch(`${SB.url}/rest/v1/atlas_dishes?on_conflict=id`, {
+    method: 'POST',
+    headers: { ...authHeaders(true), Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify(dishRowFrom(d))
+  });
+  if (!r.ok) throw new Error(await explain(r, 'la fiche'));
+  DISH_ROW_OK.add(dishId);
+}
+
+/* message d'erreur lisible plutôt qu'un simple numéro */
+async function explain(res, quoi) {
+  let detail = '';
+  try { const j = await res.json(); detail = j.message || j.msg || j.error || ''; } catch (e) { }
+  if (res.status === 401 || res.status === 403)
+    return `Écriture refusée : reconnectez-vous (${res.status}).`;
+  if (res.status === 409)
+    return `Conflit en base sur ${quoi} (409) — ${detail || 'contrainte non satisfaite'}.`;
+  return `Enregistrement de ${quoi} refusé (${res.status})${detail ? ' — ' + detail : ''}`;
+}
+
 /* ---------- photos ---------- */
 function dataUrlToBlob(dataUrl) {
   const [head, b64] = dataUrl.split(',');
@@ -358,6 +412,7 @@ function dataUrlToBlob(dataUrl) {
    elle devient aussitôt visible par tous les visiteurs */
 async function publishPhoto(dishId, dataUrl, credit) {
   if (!IS_ADMIN) throw new Error('Connexion requise');
+  await ensureDishRow(dishId);
   const blob = dataUrlToBlob(dataUrl);
   const path = `${dishId}-${Date.now()}.jpg`;
 
@@ -369,12 +424,12 @@ async function publishPhoto(dishId, dataUrl, credit) {
   if (!up.ok) throw new Error('Envoi de l’image refusé (' + up.status + ')');
 
   const prev = DB_PHOTO[dishId];
-  const res = await fetch(`${SB.url}/rest/v1/atlas_dish_photos`, {
+  const res = await fetch(`${SB.url}/rest/v1/atlas_dish_photos?on_conflict=dish_id`, {
     method: 'POST',
     headers: { ...authHeaders(true), Prefer: 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify({ dish_id: dishId, path, credit: credit || null })
   });
-  if (!res.ok) throw new Error('Enregistrement refusé (' + res.status + ')');
+  if (!res.ok) throw new Error(await explain(res, 'la photo'));
 
   DB_PHOTO[dishId] = { url: `${SB.url}/storage/v1/object/public/atlas-photos/${path}`, credit: credit || '' };
   if (prev) removeStored(prev.url);   // ménage : on supprime l'ancienne
@@ -402,7 +457,8 @@ function removeStored(publicUrl) {
 /* ---------- textes des fiches ---------- */
 async function saveDishText(dishId, lang, fields) {
   if (!IS_ADMIN) throw new Error('Connexion requise');
-  const r = await fetch(`${SB.url}/rest/v1/atlas_dish_texts`, {
+  await ensureDishRow(dishId);
+  const r = await fetch(`${SB.url}/rest/v1/atlas_dish_texts?on_conflict=dish_id,lang`, {
     method: 'POST',
     headers: { ...authHeaders(true), Prefer: 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify({
@@ -411,19 +467,23 @@ async function saveDishText(dishId, lang, fields) {
       description: fields.description, steps: fields.steps
     })
   });
-  if (!r.ok) throw new Error('Enregistrement refusé (' + r.status + ')');
+  if (!r.ok) throw new Error(await explain(r, 'le texte'));
   const d = DISHES.find(x => x.id === dishId);
   if (d) { d.n[lang] = fields.name; d.p[lang] = fields.place; d.d[lang] = fields.description; d.s[lang] = fields.steps; }
 }
 
 async function saveDishFacts(dishId, fields) {
   if (!IS_ADMIN) throw new Error('Connexion requise');
-  const r = await fetch(`${SB.url}/rest/v1/atlas_dishes?id=eq.${encodeURIComponent(dishId)}`, {
-    method: 'PATCH',
-    headers: { ...authHeaders(true), Prefer: 'return=minimal' },
-    body: JSON.stringify(fields)
+  // upsert plutôt que PATCH : une fiche encore absente de la base serait
+  // sinon « modifiée » sans qu'aucune ligne ne change, et sans rien dire.
+  await ensureDishRow(dishId);
+  // seules les colonnes retouchées sont envoyées : le reste garde sa valeur
+  const r = await fetch(`${SB.url}/rest/v1/atlas_dishes?on_conflict=id`, {
+    method: 'POST',
+    headers: { ...authHeaders(true), Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ id: dishId, ...fields })
   });
-  if (!r.ok) throw new Error('Enregistrement refusé (' + r.status + ')');
+  if (!r.ok) throw new Error(await explain(r, 'la fiche'));
   const d = DISHES.find(x => x.id === dishId);
   if (d) Object.assign(d, {
     lat: fields.lat ?? d.lat, lon: fields.lon ?? d.lon,
