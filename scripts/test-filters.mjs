@@ -71,6 +71,39 @@ check(w.document.querySelector('#filterPanel').classList.contains('open'), 'il s
 check(w.document.querySelectorAll('.fchip').length >= 25,
   'toutes les cases sont dessinées', w.document.querySelectorAll('.fchip').length + ' cases');
 
+/* ---------- on doit pouvoir refermer le panneau ----------
+   Il flottait à une hauteur fixe et recouvrait son propre bouton dès
+   que la barre des continents passait à deux lignes : ouvert, il ne se
+   refermait plus. */
+const panneau = w.document.querySelector('#filterPanel');
+const bouton = w.document.querySelector('#filterBtn');
+check(panneau.parentElement === bouton.closest('.mapctl'),
+  'barre et panneau appartiennent au même bloc');
+check(panneau.previousElementSibling === w.document.querySelector('.continents'),
+  'le panneau suit les puces dans le flux, il ne flotte pas par-dessus');
+
+w.eval('toggleFilters(true)');
+bouton.click();
+check(!w.eval('filtersOpen()'), 'un second clic sur Filtres referme le panneau');
+
+w.eval('toggleFilters(true)');
+w.document.querySelector('#fclose').click();
+check(!w.eval('filtersOpen()'), 'la croix du panneau le referme');
+
+w.eval('toggleFilters(true)');
+w.document.querySelector('#globe').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+check(!w.eval('filtersOpen()'), 'toucher le globe le referme');
+
+w.eval('toggleFilters(true)');
+w.document.querySelector('.fchip').dispatchEvent(new w.MouseEvent('click', { bubbles: true }));
+check(w.eval('filtersOpen()'), 'mais cliquer une case ne le referme pas');
+
+w.eval('toggleFilters(true)');
+w.document.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+check(!w.eval('filtersOpen()'), 'la touche Échap le referme');
+
+w.eval(`state.filters = emptyFilters(); applyFilters(); toggleFilters(false);`);
+
 /* ---------- exclusions ---------- */
 check(marks() === total, 'sans filtre, toutes les fiches restent', `${marks()} / ${total}`);
 
