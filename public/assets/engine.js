@@ -2112,8 +2112,12 @@ function renderFilters() {
         + (n === null ? '' : `<b>${n}</b>`) + `</label>`;
     }).join('');
     return `<div class="fsec"><h4>${esc(t(sec.label))}</h4><div class="fchips">${rows}</div></div>`;
-  }).join('')
+  }).join('');
+  box.innerHTML = `<div class="fhead"><span>${esc(t('filters'))}</span>`
+    + `<button type="button" id="fclose" class="fclose" aria-label="${esc(t('close'))}">&times;</button></div>`
+    + box.innerHTML
     + `<button type="button" id="fclear" class="fclear">${esc(t('filtersClear'))}</button>`;
+  $('#fclose').onclick = () => toggleFilters(false);
 
   box.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = () => {
     const set = state.filters[cb.dataset.kind];
@@ -2132,6 +2136,10 @@ function applyFilters() {
   btn.classList.toggle('on', n > 0);
 }
 
+function filtersOpen() {
+  const box = $('#filterPanel');
+  return !!(box && box.classList.contains('open'));
+}
 function toggleFilters(force) {
   const box = $('#filterPanel'); if (!box) return;
   const open = force != null ? force : !box.classList.contains('open');
@@ -2296,9 +2304,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   fb.setAttribute('aria-expanded', 'false'); fb.setAttribute('aria-controls', 'filterPanel');
   fb.onclick = () => toggleFilters();
   cbox.appendChild(fb);
+  // barre et panneau dans un même bloc : le panneau se place sous les
+  // puces au lieu de flotter à une hauteur fixe qui finissait par
+  // recouvrir le bouton dès que la barre passait à deux lignes
+  const wrap = document.createElement('div');
+  wrap.className = 'mapctl';
+  cbox.insertAdjacentElement('beforebegin', wrap);
+  wrap.appendChild(cbox);
   const fp = document.createElement('div');
   fp.id = 'filterPanel'; fp.className = 'filterpanel';
-  cbox.insertAdjacentElement('afterend', fp);
+  wrap.appendChild(fp);
   applyFilters();
   document.querySelectorAll('.langs button').forEach(b => b.onclick = () => setLang(b.dataset.l));
   $('#q').addEventListener('input', e => runSearch(e.target.value));
@@ -2310,11 +2325,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     if (!e.target.closest('.search')) $('#results').classList.remove('on');
     // au doigt, toucher ailleurs referme la liste d'un lieu
     if (!e.target.closest('.placemenu') && e.target.id !== 'globe') hidePlaceMenu();
+    // ... et le panneau de filtres, sauf si l'on vient de cliquer dedans
+    // ou sur le bouton qui l'ouvre
+    if (filtersOpen() && !e.target.closest('#filterPanel') && !e.target.closest('#filterBtn'))
+      toggleFilters(false);
   });
   $('#zin').onclick = () => globe.setZoom(globe.tZoom * 1.5);
   $('#zout').onclick = () => globe.setZoom(globe.tZoom / 1.5);
   $('#zhome').onclick = () => { state.cont = 'all'; setCont('all'); deselect(); };
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && state.dish) deselect(); });
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if (filtersOpen()) { toggleFilters(false); return; }
+    if (state.dish) deselect();
+  });
   await setLang(lang);
   renderEmpty();
   hintTimer = setTimeout(hideHint, 9000);
