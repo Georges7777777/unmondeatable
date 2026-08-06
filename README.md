@@ -1,7 +1,7 @@
 # Un monde à table — unmondeatable.fr
 
-Atlas interactif de 400 spécialités culinaires, en français, anglais, espagnol
-et portugais. Site public, consultable sur ordinateur et smartphone, avec une
+Atlas interactif de 978 spécialités culinaires, en français et en anglais.
+Site public, consultable sur ordinateur et smartphone, avec une
 base de données et un espace d'administration réservé.
 
 ---
@@ -23,9 +23,11 @@ Trois comptes gratuits, une quinzaine de minutes :
 1. Sur [supabase.com](https://supabase.com), **New project**.
    - Nom : `unmondeatable`
    - Mot de passe : notez-le quelque part
-   - **Region : `Europe (Frankfurt)` ou `Europe (Paris)`** — important pour que
-     les données restent dans l'Union européenne, comme annoncé dans vos
-     mentions légales.
+   - **Region : une région européenne** (`Europe (Ireland)`, `Frankfurt`,
+     `Paris`…) — les mentions légales du site annoncent un stockage dans
+     l'Union européenne. Si vous changez de région, pensez à corriger le
+     paragraphe « Hébergement » de `public/mentions-legales.html` et la note
+     « Où sont vos données ? » de `public/confidentialite.html`.
 2. Une fois le projet créé, ouvrez **SQL Editor** (menu de gauche) → **New query**.
 3. Copiez tout le contenu de `supabase/schema.sql`, collez, cliquez **Run**.
    Vous devez lire *Success*. Cela crée les tables, les sécurités et le dossier
@@ -57,26 +59,28 @@ et les photos depuis le site.
 
 ---
 
-## Étape 3 — Charger les 400 fiches
+## Étape 3 — Charger les fiches
 
 L'éditeur SQL de Supabase refuse les requêtes de plus d'environ 1 Mo. Le contenu
-est donc découpé en cinq fichiers, dans `supabase/` :
+est donc découpé en trois fichiers, dans `supabase/` :
 
 | Fichier | Contenu | Taille |
 |---|---|---|
-| `seed-1-socle.sql` | 400 fiches + 645 ingrédients | 234 Ko |
+| `seed-1-socle.sql` | 978 fiches + 954 ingrédients | 292 Ko |
 | `seed-2-textes-fr.sql` | textes français | 318 Ko |
 | `seed-3-textes-en.sql` | textes anglais | 269 Ko |
-| `seed-4-textes-es.sql` | textes espagnols | 285 Ko |
-| `seed-5-textes-pt.sql` | textes portugais | 281 Ko |
 
 Pour chacun : ouvrez-le dans un éditeur de texte, ⌘A puis ⌘C, et collez dans
 Supabase → **SQL Editor** → **New query** → **Run**. Respectez l'ordre.
 
-> **Le socle suffit.** Les quatre fichiers de textes sont facultatifs : le site
+> **Le socle suffit.** Les deux fichiers de textes sont facultatifs : le site
 > affiche déjà tous les textes depuis les données livrées avec lui. Ils ne
 > servent qu'à disposer de l'intégralité du contenu en base, comme sauvegarde.
 > Vous pourrez les charger plus tard.
+
+> **Vous passez d'une version à quatre langues ?** Exécutez ensuite
+> `supabase/cleanup-langues.sql`, qui supprime les textes espagnols et
+> portugais devenus inutiles. À faire **après** avoir redéployé le site.
 
 ## Étape 4 — Publier le site
 
@@ -175,7 +179,7 @@ enregistrements MX ont été touchés : rétablissez-les depuis l'espace IONOS
      *Ajouter une photo*. Elle est redimensionnée, envoyée en base, et devient
      immédiatement visible par tous les visiteurs.
    - **Modifier un texte** : bouton *Modifier cette fiche*. Chaque langue
-     s'édite séparément (basculez avec FR/EN/ES/PT avant d'ouvrir le
+     s'édite séparément (basculez avec FR/EN avant d'ouvrir le
      formulaire).
 
 Les modifications sont visibles par tout le monde **sans redéploiement** : le
@@ -183,6 +187,71 @@ site charge son instantané puis demande à la base ce qui a changé depuis.
 
 > Les visiteurs ne voient jamais ces boutons et ne peuvent rien modifier :
 > l'écriture est bloquée côté base pour toute personne non connectée.
+
+### Ce que devient votre travail au prochain déploiement
+
+Les fiches livrées avec le site sont fabriquées à partir des fichiers sources
+(`src/d*.js`). Vos modifications faites en administration, elles, ne vivent que
+dans la base. Pour qu'un nouveau déploiement ne les efface pas de l'affichage,
+la construction commence par **replier la base dans l'instantané**
+(`scripts/merge-db.mjs`) : textes réécrits, fiches importées, photos publiées
+et lexique sont récupérés puis figés dans les fichiers publiés.
+
+Cela suppose que `SUPABASE_URL` et `SUPABASE_ANON_KEY` soient renseignées dans
+Vercel — ce sont les mêmes variables que celles de l'étape 4. Si la base est
+injoignable au moment de la construction, le déploiement se poursuit sans
+échouer et le site va chercher les photos à l'ouverture.
+
+---
+
+## Ajouter vos propres recettes par un fichier Excel
+
+La barre d'administration porte trois boutons à droite.
+
+| Bouton | Ce qu'il fait |
+|---|---|
+| **Exporter** | télécharge les 400 fiches dans un classeur `.xlsx` |
+| **Modèle** | le même classeur avec une seule recette d'exemple, prêt à remplir |
+| **Importer** | relit un classeur et propose un aperçu avant d'écrire |
+
+### Remplir le classeur
+
+La feuille **Recettes** contient une ligne par spécialité. Pour en ajouter une,
+écrivez à la suite et **laissez la colonne `identifiant` vide** : elle sera
+créée à partir du nom français. Les deux langues sont obligatoires.
+
+Les ingrédients s'écrivent en français, **un par ligne**, sous la forme
+*quantité, unité, nom* :
+
+```
+1200 g poissons de roche
+4 gousses ail
+6 c. à soupe huile d'olive
+3 pommes de terre
+sel
+```
+
+Sans quantité, écrivez simplement le nom. Sans unité, la quantité compte des
+pièces. Les noms sont rapprochés du lexique de la feuille **Ingrédients** —
+un ingrédient inconnu y est ajouté, avec son nom français dans les quatre
+langues en attendant que vous le traduisiez.
+
+La feuille **Listes** donne les valeurs acceptées pour le continent, la
+difficulté, les étiquettes et les unités.
+
+### Importer
+
+Le bouton *Importer* n'écrit rien tout de suite : il affiche d'abord un
+récapitulatif — nouvelles fiches, fiches déjà existantes, lignes refusées et
+motif du refus, ingrédients qui seront créés.
+
+Une ligne dont l'identifiant existe déjà **remplace** la fiche : il n'y a
+jamais de doublon. Les fiches existantes apparaissent avec une case à cocher,
+décochez celles que vous ne voulez pas écraser. Une ligne incomplète est
+signalée et ignorée, sans empêcher le reste de s'importer.
+
+> L'export puis le réimport des 400 fiches est vérifié automatiquement
+> (`node scripts/test-xlsx.mjs`) : rien ne se perd et rien ne se duplique.
 
 ---
 
@@ -198,8 +267,23 @@ Tester que tout fonctionne :
 
 ```bash
 cd public && python3 -m http.server 8099 &
-node scripts/test-site.mjs
+node scripts/test-site.mjs     # données, fiches, langues, pages légales, admin
+node scripts/test-ux.mjs       # gestes du globe, panneau, liste d'un lieu
+node scripts/test-xlsx.mjs     # aller-retour Excel sur les fiches
+node scripts/check-dishes.mjs  # cohérence des fiches sources (ingrédients, unités, langues)
+node scripts/test-wiki.mjs     # deux plats ne partagent jamais la même photo
+node scripts/test-photos.mjs   # les photos publiées survivent aux déploiements
+node scripts/test-merge.mjs    # l'étape de construction qui replie la base
+node scripts/test-admin.mjs    # photo et texte s'enregistrent, même pour une fiche neuve
+node scripts/test-filters.mjs  # sans viande, sans porc, bœuf ou volaille, difficulté, temps
+node scripts/test-boot.mjs     # un moteur incomplet le dit au lieu de tourner sans fin
+node scripts/make-foodgroups.mjs # reclasse les ingrédients par famille après un ajout
+node scripts/make-template.mjs un-monde-a-table-modele.xlsx
 ```
+
+Les tests utilisent `jsdom` (`npm i jsdom`), et `test-xlsx.mjs` relit le
+classeur avec `openpyxl` s'il est installé — un contrôle indépendant, par un
+autre logiciel que celui qui l'a écrit.
 
 ---
 
@@ -223,7 +307,7 @@ site/
 ```
 
 > **Où changer le nom du site ?** Dans `src/engine/i18n.js` (clés `title1`,
-> `title2` et `tagline`, pour les 4 langues) et dans les balises `<title>` des
+> `title2` et `tagline`, dans les deux langues) et dans les balises `<title>` des
 > pages HTML. `src/engine/` est la référence : c'est de là que part le build.
 
 **Pourquoi c'est rapide sur mobile.** Les données sont livrées avec le site et

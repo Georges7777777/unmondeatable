@@ -49,8 +49,10 @@ function check(label, cond, extra = '') {
 }
 
 // --- données ---
+const attendu = JSON.parse(await (await fetch(new URL('data/core.json', BASE))).text()).count;
 const n = w.eval('typeof DISHES !== "undefined" ? DISHES.length : 0');
-check('400 fiches chargées', n === 400, n + ' fiches');
+// le nombre grandit à chaque lot : on vérifie qu'il correspond à l'instantané
+check('toutes les fiches de l’instantané sont chargées', n === attendu, `${n} / ${attendu}`);
 check('ingrédients chargés', w.eval('Object.keys(ING).length') > 600);
 check('carte chargée', w.eval('typeof GEO_COAST !== "undefined" && GEO_COAST.length') > 1000);
 check('écran de chargement retiré', !w.document.body.classList.contains('booting'));
@@ -65,7 +67,7 @@ let bad = 0;
 for (const id of w.eval('DISHES.map(d=>d.id)')) {
   try { w.eval(`select(${JSON.stringify(id)})`); } catch (e) { bad++; }
 }
-check('les 400 fiches s’ouvrent', bad === 0, bad + ' échec(s)');
+check('toutes les fiches s’ouvrent', bad === 0, bad + ' échec(s)');
 check('recette affichée', /(<li>)/.test(w.document.querySelector('#panel').innerHTML));
 
 // --- recherche ---
@@ -91,10 +93,9 @@ check('titre = Un monde à table',
   w.document.querySelector('#t1').textContent + ' ' + w.document.querySelector('#t2').textContent);
 check('sous-titre = Le Goût du Monde', w.document.querySelector('#tag').textContent.trim() === 'Le Goût du Monde');
 check('plus de « Atlas des saveurs »', !/Atlas des saveurs/.test(w.document.body.innerHTML));
-await w.eval('setLang("es")'); await wait(400);
-check('titre traduit en espagnol',
-  w.document.querySelector('#t1').textContent.trim() === 'Un mundo a la' && w.document.querySelector('#tag').textContent.trim() === 'El Sabor del Mundo',
-  w.document.querySelector('#t1').textContent + ' ' + w.document.querySelector('#t2').textContent + ' / ' + w.document.querySelector('#tag').textContent);
+check('le site ne propose que le français et l’anglais',
+  w.eval('LANGS').join(',') === 'fr,en' && w.document.querySelectorAll('.langs button').length === 2,
+  w.eval('LANGS').join(', '));
 await w.eval('setLang("fr")'); await wait(200);
 
 // --- signature et mentions ---

@@ -89,6 +89,23 @@
 <script>
   document.getElementById('year').textContent = new Date().getFullYear();
 </script>
+<script>
+  /* Filet de sécurité : si le moteur ne démarre pas, l'écran de chargement
+     tournait jusqu'à la fin des temps sans rien dire. On retient la première
+     erreur, et au bout de quinze secondes on l'affiche au lieu de patienter. */
+  window.__bootError = null;
+  window.addEventListener('error', function (e) {
+    if (!window.__bootError) window.__bootError = (e && (e.message || e.type)) || 'erreur inconnue';
+  }, true);
+  setTimeout(function () {
+    if (!document.body.classList.contains('booting')) return;
+    var p = document.querySelector('#boot p');
+    if (!p) return;
+    p.innerHTML = 'Le site n’a pas pu démarrer.'
+      + (window.__bootError ? '<br><small style="opacity:.7">' + String(window.__bootError).slice(0, 120) + '</small>' : '')
+      + '<br><button type="button" onclick="location.reload()">Réessayer</button>';
+  }, 15000);
+</script>
 <script src="assets/config.js"></script>
 <script src="assets/geo.js"></script>
 <script src="assets/engine.js"></script>

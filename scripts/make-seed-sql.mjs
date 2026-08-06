@@ -21,8 +21,8 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DATA = path.resolve(HERE, '../public/data');
 const OUT = path.resolve(HERE, '../supabase');
-const LANGS = ['fr', 'en', 'es', 'pt'];
-const LABEL = { fr: 'français', en: 'anglais', es: 'espagnol', pt: 'portugais' };
+const LANGS = ['fr', 'en'];
+const LABEL = { fr: 'français', en: 'anglais' };
 
 const core = JSON.parse(fs.readFileSync(path.join(DATA, 'core.json'), 'utf8'));
 const texts = {};
@@ -46,8 +46,8 @@ function write(name, header, body) {
 const socle = [];
 const ing = Object.entries(core.ingredients);
 for (let i = 0; i < ing.length; i += 150) {
-  const chunk = ing.slice(i, i + 150).map(([id, v]) => `(${q(id)},${q(v[0])},${q(v[1])},${q(v[2])},${q(v[3])})`);
-  socle.push(`insert into public.atlas_ingredients (id,fr,en,es,pt) values\n${chunk.join(',\n')}\non conflict (id) do update set fr=excluded.fr,en=excluded.en,es=excluded.es,pt=excluded.pt;\n`);
+  const chunk = ing.slice(i, i + 150).map(([id, v]) => `(${q(id)},${q(v[0])},${q(v[1])})`);
+  socle.push(`insert into public.atlas_ingredients (id,fr,en) values\n${chunk.join(',\n')}\non conflict (id) do update set fr=excluded.fr,en=excluded.en;\n`);
 }
 for (let i = 0; i < core.dishes.length; i += 80) {
   const chunk = core.dishes.slice(i, i + 80).map(d =>
@@ -87,4 +87,4 @@ LANGS.forEach((l, idx) => {
 `, body);
 });
 
-console.log(`\n${core.dishes.length} fiches · ${core.dishes.length * 4} traductions · ${ing.length} ingrédients`);
+console.log(`\n${core.dishes.length} fiches · ${core.dishes.length * LANGS.length} traductions · ${ing.length} ingrédients`);

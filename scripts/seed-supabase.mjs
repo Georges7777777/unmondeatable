@@ -17,7 +17,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const DATA = path.resolve(HERE, '../public/data');
-const LANGS = ['fr', 'en', 'es', 'pt'];
+const LANGS = ['fr', 'en'];
 
 /* --- lecture du .env sans dépendance --- */
 const envFile = path.resolve(HERE, '../.env');
@@ -62,7 +62,7 @@ async function upsert(table, rows, conflict, label) {
 console.log('Envoi vers', URL, '\n');
 
 await upsert('atlas_ingredients',
-  Object.entries(core.ingredients).map(([id, v]) => ({ id, fr: v[0], en: v[1], es: v[2], pt: v[3] })),
+  Object.entries(core.ingredients).map(([id, v]) => ({ id, fr: v[0], en: v[1] })),
   'id', 'ingrédients');
 
 await upsert('atlas_dishes', core.dishes.map(d => ({

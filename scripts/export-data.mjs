@@ -1,6 +1,6 @@
 /* ============================================================
-   export-data.mjs — extrait les 400 fiches des fichiers source
-   historiques (d1.js … d31.js) vers des instantanés JSON.
+   export-data.mjs — extrait les fiches des fichiers source
+   (d1.js … d39.js) vers des instantanés JSON.
 
    Découpage volontaire :
      core.json    → géométrie, tags, ingrédients, illustration
@@ -20,7 +20,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(HERE, '../../src');  // fiches d'origine (hors paquet publié)
 const OUT = path.resolve(HERE, '../public/data');
-const LANGS = ['fr', 'en', 'es', 'pt'];
+const LANGS = ['fr', 'en'];
 
 if (!fs.existsSync(SRC)) {
   console.error('Sources introuvables :', SRC);
@@ -28,7 +28,7 @@ if (!fs.existsSync(SRC)) {
 }
 
 const files = ['lexicon.js', 'wiki.js'];
-for (let i = 1; i <= 31; i++) files.push(`d${i}.js`);
+for (let i = 1; i <= 58; i++) files.push(`d${i}.js`);
 let code = '';
 for (const f of files) code += fs.readFileSync(path.join(SRC, f), 'utf8') + '\n';
 const { DISHES, ING, WIKI } = new Function(code + '\n return { DISHES, ING, WIKI };')();

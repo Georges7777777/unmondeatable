@@ -464,3 +464,10 @@ body.loading-lang .langs{opacity:.5;pointer-events:none}
   .brand .signature{display:block}
   #count{left:12px;bottom:auto;top:8px;font-size:10px}
 }
+
+/* bouton du filet de sécurité au démarrage */
+#boot button{
+  margin-top:12px;padding:8px 16px;border-radius:999px;border:1px solid var(--line);
+  background:rgba(232,176,75,.14);color:var(--gold2);font-size:13px;cursor:pointer
+}
+#boot button:hover{background:rgba(232,176,75,.24)}

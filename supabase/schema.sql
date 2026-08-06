@@ -26,9 +26,7 @@ $$;
 create table if not exists public.atlas_ingredients (
   id   text primary key,
   fr   text not null,
-  en   text not null,
-  es   text not null,
-  pt   text not null
+  en   text not null
 );
 
 -- ---------- 2. Fiches : partie non textuelle ----------
@@ -54,7 +52,7 @@ create index if not exists atlas_dishes_updated_idx on public.atlas_dishes (upda
 -- ---------- 3. Textes, une ligne par fiche et par langue ----------
 create table if not exists public.atlas_dish_texts (
   dish_id     text not null references public.atlas_dishes(id) on delete cascade,
-  lang        text not null check (lang in ('fr','en','es','pt')),
+  lang        text not null check (lang in ('fr','en')),
   name        text not null,
   place       text not null,
   description text not null,
