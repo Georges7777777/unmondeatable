@@ -143,7 +143,12 @@ create policy "atlas photos ecriture" on storage.objects for all
 --  Vue : dernière modification, tous contenus confondus.
 --  Le site l'interroge pour savoir s'il doit se rafraîchir.
 -- ============================================================
-create or replace view public.atlas_content_version as
+-- security_invoker : la vue s'exécute avec les droits de celui qui
+-- l'interroge, pas ceux de son créateur. Sans cela PostgreSQL lui donne
+-- les privilèges du propriétaire et contourne les règles RLS des tables
+-- qu'elle lit — ce que l'analyseur de Supabase signale à juste titre.
+create or replace view public.atlas_content_version
+  with (security_invoker = true) as
   select greatest(
     coalesce((select max(updated_at) from public.atlas_dishes), 'epoch'::timestamptz),
     coalesce((select max(updated_at) from public.atlas_dish_texts), 'epoch'::timestamptz),

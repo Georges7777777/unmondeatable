@@ -23,12 +23,14 @@ const errors = [], ok = [];
 const check = (cond, label, detail = '') =>
   (cond ? ok : errors).push(label + (detail ? ' — ' + detail : ''));
 
-/* ---------- 1. la construction refuse un moteur amputé ---------- */
+/* ---------- 1. la construction ne publie jamais un moteur amputé ---------- */
 const build = fs.readFileSync(path.resolve(HERE, 'build.mjs'), 'utf8');
-check(/Moteur incomplet/.test(build) && /ATTENDUS/.test(build),
+check(/ATTENDUS/.test(build) && /symbolesAbsents/.test(build),
   'la construction contrôle le moteur assemblé');
 check(/emptyFilters/.test(build) && /FOOD_GROUPS/.test(build),
   'et vérifie nommément les symboles que app.js exige au chargement');
+check(/On conserve la version déjà publiée/.test(build),
+  'des sources périmées ne peuvent pas écraser un moteur qui fonctionne');
 
 /* ---------- 2. le site démarre normalement ---------- */
 async function ouvrir(patch, attente) {

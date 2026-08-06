@@ -71,34 +71,50 @@ const bundle = parts => {
   let out = '';
   for (const [dir, f] of parts) {
     const p = path.join(dir, f);
-    if (!fs.existsSync(p)) { console.error('Fichier manquant :', p); process.exit(1); }
+    if (!fs.existsSync(p)) return { manquant: f };
     out += `/* ===== ${f} ===== */\n` + fs.readFileSync(p, 'utf8') + '\n';
   }
-  return out;
+  return { code: out };
 };
-const engine = bundle(PARTS);
 
-/* ---- contrôle du moteur assemblé ----
-   Un fichier oublié dans la liste ci-dessus ne casse rien à la
-   construction : il casse le site au premier chargement, sans un mot,
-   et l'écran d'attente tourne indéfiniment. On vérifie donc que chaque
-   symbole attendu par app.js est bien défini quelque part avant lui. */
+/* Symboles que app.js exige dès son chargement. S'il en manque un, le
+   moteur s'arrête à la première ligne et le site ne démarre jamais —
+   sans message. On préfère le savoir ici. */
 const ATTENDUS = [
   ['emptyFilters', 'filters.js'], ['matchFilters', 'filters.js'],
   ['FOOD_GROUPS', 'foodgroups.js'], ['countFor', 'filters.js'],
   ['loadCore', 'data.js'], ['Globe', 'globe.js'], ['dishSVG', 'illus.js'],
   ['getPhoto', 'photos.js'], ['UI', 'i18n.js']
 ];
-const absents = ATTENDUS.filter(([sym]) =>
-  !new RegExp(`(function|const|let|class)\\s+${sym}\\b`).test(engine));
-if (absents.length) {
-  console.error('\nMoteur incomplet : ' + absents.map(([s, f]) => `${s} (${f})`).join(', '));
-  console.error('Vérifiez la liste PARTS ci-dessus et le contenu de src/engine.');
+const symbolesAbsents = (code, attendus = ATTENDUS) => attendus.filter(([sym]) =>
+  !new RegExp(`(function|const|let|class)\\s+${sym}\\b`).test(code));
+
+/* Écrit un fichier assemblé — mais jamais un fichier cassé.
+   Si les sources sont incomplètes ou périmées (dépôt partiellement mis à
+   jour, ce qui arrive avec l'envoi par le site de GitHub), on garde la
+   version déjà publiée plutôt que d'écraser un moteur qui fonctionne. */
+function publier(nom, parts, attendus = []) {
+  const cible = path.join(OUT, nom);
+  const dejaLa = fs.existsSync(cible) ? fs.readFileSync(cible, 'utf8') : null;
+  const r = bundle(parts);
+  const refus = r.manquant
+    ? `source absente : ${r.manquant}`
+    : (symbolesAbsents(r.code, attendus).length
+        ? 'moteur incomplet : ' + symbolesAbsents(r.code, attendus).map(([s, f]) => `${s} (${f})`).join(', ')
+        : null);
+  if (!refus) { fs.writeFileSync(cible, r.code); return; }
+  if (dejaLa && !symbolesAbsents(dejaLa, attendus).length) {
+    console.warn(`  ! ${nom} — ${refus}`);
+    console.warn(`    On conserve la version déjà publiée, qui est complète.`);
+    console.warn(`    Mettez à jour src/ dans le dépôt pour reprendre la main.`);
+    return;
+  }
+  console.error(`\n${nom} : ${refus}`);
+  console.error('Aucune version publiable disponible. Vérifiez le contenu de src/.');
   process.exit(1);
 }
-
-fs.writeFileSync(path.join(OUT, 'engine.js'), engine);
-fs.writeFileSync(path.join(OUT, 'admin-tools.js'), bundle(ADMIN_PARTS));
+publier('engine.js', PARTS, ATTENDUS);
+publier('admin-tools.js', ADMIN_PARTS);
 
 /* ---- 4. configuration publique ----
    Seule la clé « anon » est exposée : elle ne permet que la lecture,

@@ -66,6 +66,7 @@ est donc découpé en trois fichiers, dans `supabase/` :
 
 | Fichier | Contenu | Taille |
 |---|---|---|
+| `fix-vue-securite.sql` | corrige l'alerte « Security Definer View » | — |
 | `seed-1-socle.sql` | 978 fiches + 954 ingrédients | 292 Ko |
 | `seed-2-textes-fr.sql` | textes français | 318 Ko |
 | `seed-3-textes-en.sql` | textes anglais | 269 Ko |
