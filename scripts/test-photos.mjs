@@ -20,12 +20,23 @@ const check = (cond, label, detail = '') =>
 /* Fausse base : le contenu date d'hier, l'instantané d'aujourd'hui.
    C'est exactement la situation d'un site fraîchement redéployé. */
 const HIER = new Date(Date.now() - 86400e3).toISOString();
-let calls = [];
+/* et une photo publiée après le déploiement, comme celles des Açores */
+const DEMAIN = new Date(Date.now() + 3600e3).toISOString();
+const PHOTOS_BASE = [
+  { dish_id: 'bouillabaisse', path: 'bouillabaisse-1.jpg', credit: 'Georges', updated_at: HIER },
+  { dish_id: 'cassoulet', path: 'cassoulet-1.jpg', credit: 'Georges', updated_at: DEMAIN }
+];
+let calls = [], VERSION = HIER;
 function fakeSupabase(url) {
   calls.push(url);
   const json = v => Promise.resolve({ ok: true, json: () => Promise.resolve(v), text: () => Promise.resolve('') });
-  if (url.includes('atlas_content_version')) return json([{ updated_at: HIER }]);
-  if (url.includes('atlas_dish_photos')) return json([{ dish_id: 'bouillabaisse', path: 'bouillabaisse-1.jpg', credit: 'Georges' }]);
+  if (url.includes('atlas_content_version')) return json([{ updated_at: VERSION }]);
+  if (url.includes('atlas_dish_photos')) {
+    // on respecte le filtre updated_at=gt.… comme le ferait PostgREST
+    const m = decodeURIComponent(url).match(/updated_at=gt\.([^&]+)/);
+    const rows = m ? PHOTOS_BASE.filter(p => new Date(p.updated_at) > new Date(m[1])) : PHOTOS_BASE;
+    return json(rows);
+  }
   if (url.includes('atlas_dishes')) return json([]);
   if (url.includes('atlas_dish_texts')) return json([]);
   return json([]);
@@ -73,6 +84,7 @@ async function boot(withSnapshotPhotos) {
 
 /* ---------- 1. instantané sans photos (base injoignable au build) ---------- */
 {
+  VERSION = HIER;               // rien n'a bougé depuis le déploiement
   const w = await boot(false);
   const snap = w.eval('SNAPSHOT');
   check(new Date(snap) > new Date(HIER),
@@ -93,20 +105,29 @@ async function boot(withSnapshotPhotos) {
   w.close();
 }
 
-/* ---------- 2. instantané contenant déjà les photos ---------- */
+/* ---------- 2. photo publiée APRÈS le dernier déploiement ----------
+   Le défaut : l'instantané contenait déjà des photos, la synchronisation
+   en concluait qu'il n'y avait rien à demander, et toute photo ajoutée
+   ensuite restait invisible jusqu'au déploiement suivant. */
 {
+  VERSION = DEMAIN;             // une photo vient d'être publiée
   const w = await boot(true);
   calls = [];
   await w.syncFromDB('fr');
   const db = w.eval('DB_PHOTO');
-  check(!!db['bouillabaisse'], 'une photo déjà présente dans l’instantané s’affiche sans requête');
-  check(!calls.some(u => u.includes('atlas_dish_photos')),
-    'et l’on ne redemande pas ce que l’on a déjà');
+  check(!!db['cassoulet'],
+    'une photo publiée après le déploiement s’affiche sans attendre le suivant');
+  check(String(db['cassoulet'] && db['cassoulet'].url).includes('atlas-photos/cassoulet-1.jpg'),
+    'son adresse publique est correcte', db['cassoulet'] ? db['cassoulet'].url : '');
+  check(!!db['bouillabaisse'], 'les photos déjà dans l’instantané sont conservées');
+  check(calls.some(u => /atlas_dish_photos.*updated_at=gt\./.test(u)),
+    'et l’on ne redemande que les nouveautés, pas toute la liste');
   w.close();
 }
 
 /* ---------- 3. hors ligne : rien ne casse ---------- */
 {
+  VERSION = HIER;
   const w = await boot(false);
   w.SUPA = { url: '', anonKey: '' };
   const r = await w.syncFromDB('fr');

@@ -89,23 +89,28 @@ async function syncFromDB(lang) {
   let changed = 0;
 
   try {
-    /* Les photos publiées depuis l'administration ne sont pas toujours
-       présentes dans l'instantané : si la base n'était pas joignable au
-       moment de la construction du site, elles n'y figurent pas. On les
-       demande donc systématiquement, avant tout raccourci — c'est une
-       requête légère, et une photo manquante se voit immédiatement. */
-    if (!PHOTOS_IN_SNAPSHOT) {
-      const ps = await fetch(
-        `${SUPA.url}/rest/v1/atlas_dish_photos?select=dish_id,path,credit`, { headers: h }
-      ).then(r => r.ok ? r.json() : []).catch(() => []);
-      for (const row of ps) {
-        DB_PHOTO[row.dish_id] = {
-          url: `${SUPA.url}/storage/v1/object/public/atlas-photos/${row.path}`,
-          credit: row.credit || ''
-        };
-      }
-      if (ps.length) changed += ps.length;
+    /* Photos publiées depuis l'administration.
+
+       L'instantané peut déjà en contenir — mais il les fige à la date de
+       sa construction. Une photo ajoutée après le dernier déploiement n'y
+       est donc pas, et se croire dispensé de la demander la rendrait
+       invisible jusqu'au déploiement suivant. On interroge toujours la
+       base : la liste complète si l'instantané n'a aucune photo, sinon
+       seulement celles publiées depuis, ce qui ne coûte presque rien.
+
+       On demande la requête avant tout raccourci : une photo manquante se
+       voit immédiatement, contrairement à une correction de texte. */
+    const depuis = PHOTOS_IN_SNAPSHOT ? `&updated_at=gt.${since}` : '';
+    const ps = await fetch(
+      `${SUPA.url}/rest/v1/atlas_dish_photos?select=dish_id,path,credit${depuis}`, { headers: h }
+    ).then(r => r.ok ? r.json() : []).catch(() => []);
+    for (const row of ps) {
+      DB_PHOTO[row.dish_id] = {
+        url: `${SUPA.url}/storage/v1/object/public/atlas-photos/${row.path}`,
+        credit: row.credit || ''
+      };
     }
+    changed += ps.length;
 
     // 1. rien d'autre n'a bougé ? on s'arrête là
     const v = await fetch(`${SUPA.url}/rest/v1/atlas_content_version?select=updated_at`, { headers: h })

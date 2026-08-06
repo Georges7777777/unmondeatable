@@ -231,23 +231,28 @@ async function syncFromDB(lang) {
   let changed = 0;
 
   try {
-    /* Les photos publiées depuis l'administration ne sont pas toujours
-       présentes dans l'instantané : si la base n'était pas joignable au
-       moment de la construction du site, elles n'y figurent pas. On les
-       demande donc systématiquement, avant tout raccourci — c'est une
-       requête légère, et une photo manquante se voit immédiatement. */
-    if (!PHOTOS_IN_SNAPSHOT) {
-      const ps = await fetch(
-        `${SUPA.url}/rest/v1/atlas_dish_photos?select=dish_id,path,credit`, { headers: h }
-      ).then(r => r.ok ? r.json() : []).catch(() => []);
-      for (const row of ps) {
-        DB_PHOTO[row.dish_id] = {
-          url: `${SUPA.url}/storage/v1/object/public/atlas-photos/${row.path}`,
-          credit: row.credit || ''
-        };
-      }
-      if (ps.length) changed += ps.length;
+    /* Photos publiées depuis l'administration.
+
+       L'instantané peut déjà en contenir — mais il les fige à la date de
+       sa construction. Une photo ajoutée après le dernier déploiement n'y
+       est donc pas, et se croire dispensé de la demander la rendrait
+       invisible jusqu'au déploiement suivant. On interroge toujours la
+       base : la liste complète si l'instantané n'a aucune photo, sinon
+       seulement celles publiées depuis, ce qui ne coûte presque rien.
+
+       On demande la requête avant tout raccourci : une photo manquante se
+       voit immédiatement, contrairement à une correction de texte. */
+    const depuis = PHOTOS_IN_SNAPSHOT ? `&updated_at=gt.${since}` : '';
+    const ps = await fetch(
+      `${SUPA.url}/rest/v1/atlas_dish_photos?select=dish_id,path,credit${depuis}`, { headers: h }
+    ).then(r => r.ok ? r.json() : []).catch(() => []);
+    for (const row of ps) {
+      DB_PHOTO[row.dish_id] = {
+        url: `${SUPA.url}/storage/v1/object/public/atlas-photos/${row.path}`,
+        credit: row.credit || ''
+      };
     }
+    changed += ps.length;
 
     // 1. rien d'autre n'a bougé ? on s'arrête là
     const v = await fetch(`${SUPA.url}/rest/v1/atlas_content_version?select=updated_at`, { headers: h })
@@ -310,7 +315,7 @@ const DB_PHOTO = {};
    modifier à la main : corrigez plutôt les listes du script.
    ============================================================ */
 const FOOD_GROUPS = {
-  pork: ['alheira_sausage', 'andouille', 'andouille_sausage', 'bacon', 'bayonne_ham', 'beef_trotters', 'chorizo', 'cooked_ham', 'farinheira', 'ground_pork', 'guanciale', 'ham', 'lard', 'marinated_pork', 'montbeliard_sausage', 'mortadella', 'nduja', 'pancetta', 'pinkel_sausage', 'pork_belly', 'pork_blood', 'pork_bones', 'pork_chops', 'pork_crackling', 'pork_cracklings', 'pork_ear', 'pork_fat', 'pork_kidney', 'pork_knuckle', 'pork_liver', 'pork_loin', 'pork_ribs', 'pork_rind', 'pork_sausage', 'pork_shank', 'pork_shoulder', 'pork_skin', 'pork_stomach', 'pork_trotters', 'prosciutto', 'salami', 'salt_pork', 'salted_pork', 'serrano_ham', 'smoked_bacon', 'smoked_ham', 'smoked_pork_collar', 'smoked_pork_loin', 'smoked_pork_ribs', 'strasbourg_sausage', 'toulouse_sausage'],
+  pork: ['alheira_sausage', 'andouille', 'andouille_sausage', 'bacon', 'bayonne_ham', 'beef_trotters', 'chorizo', 'cooked_ham', 'farinheira', 'ground_pork', 'guanciale', 'ham', 'lard', 'lardons', 'marinated_pork', 'montbeliard_sausage', 'mortadella', 'nduja', 'pancetta', 'pinkel_sausage', 'pork_belly', 'pork_blood', 'pork_bones', 'pork_chops', 'pork_crackling', 'pork_cracklings', 'pork_ear', 'pork_fat', 'pork_kidney', 'pork_knuckle', 'pork_liver', 'pork_loin', 'pork_ribs', 'pork_rind', 'pork_sausage', 'pork_shank', 'pork_shoulder', 'pork_skin', 'pork_stomach', 'pork_trotters', 'prosciutto', 'salami', 'salt_pork', 'salted_pork', 'serrano_ham', 'smoked_bacon', 'smoked_ham', 'smoked_pork_collar', 'smoked_pork_loin', 'smoked_pork_ribs', 'strasbourg_sausage', 'toulouse_sausage'],
   beef: ['beef_bones', 'beef_brisket', 'beef_chuck', 'beef_heart', 'beef_marrow', 'beef_ribeye', 'beef_ribs', 'beef_round', 'beef_rump', 'beef_shank', 'beef_shin', 'beef_short_ribs', 'beef_shoulder', 'beef_sirloin', 'beef_skirt', 'beef_slices', 'beef_steak', 'beef_suet', 'beef_tallow', 'beef_tbone', 'beef_tendon', 'beef_tripe', 'bone_marrow', 'carne_seca', 'cecina', 'charque', 'corned_beef', 'dried_beef', 'ground_beef', 'ground_veal', 'marrow_bone', 'oxtail', 'salted_beef', 'tripe', 'veal', 'veal_escalope', 'veal_foot', 'veal_shank', 'veal_shoulder'],
   poultry: ['chicken', 'chicken_breast', 'chicken_gizzards', 'chicken_thighs', 'chicken_wings', 'duck', 'duck_confit', 'duck_fat', 'duck_legs', 'foie_gras', 'ground_chicken', 'hen', 'smoked_chicken', 'turkey', 'turkey_breast', 'whole_duck'],
   lamb: ['goat_meat', 'goat_pepper', 'goat_stomach', 'ground_lamb', 'kazy_sausage', 'lamb', 'lamb_bones', 'lamb_fat', 'lamb_kidney', 'lamb_leg', 'lamb_shoulder', 'mutton_shoulder', 'mutton_tallow', 'sheep_pluck', 'wind_dried_mutton'],
