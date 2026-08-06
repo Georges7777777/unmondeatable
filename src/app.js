@@ -12,7 +12,7 @@ const CONT_VIEW = {
 };
 const CONT_COLOR = { eu: '#e4633a', as: '#e0913a', af: '#d9b13a', na: '#c96f9a', sa: '#6fbf8f', oc: '#5aa8d9' };
 
-const state = { lang: 'fr', dish: null, servings: 4, cont: 'all' };
+const state = { lang: 'fr', dish: null, servings: 4, cont: 'all', filters: emptyFilters() };
 let globe;
 
 /* ---------- villes ----------
@@ -268,7 +268,6 @@ function setServings(n) {
 
 /* ---------- selection ---------- */
 function pickMarker(m, keepZoom) {
-  if (m.kind === 'atlas') return selectAtlas(m, keepZoom);
   // au doigt il n'y a pas de survol : le clic ouvre lui aussi la liste
   if (groupable(m)) {
     const r = $('#globe').getBoundingClientRect();
@@ -276,14 +275,6 @@ function pickMarker(m, keepZoom) {
     return;
   }
   select(m.id, keepZoom);
-}
-function selectAtlas(m, keepZoom) {
-  state.dish = null;
-  globe.active = m.id;
-  globe.flyTo(m.lat, m.lon, keepZoom ? Math.max(globe.tZoom, 3) : 3.6);
-  $('#panel').classList.remove('hidden');
-  renderAtlasCard(m);
-  hideHint();
 }
 function select(id, keepZoom) {
   const d = DISHES.find(x => x.id === id);
@@ -308,48 +299,98 @@ function deselect() {
 }
 
 /* ---------- markers / filter ---------- */
-// continent approximatif d'un point (pour filtrer la couche atlas)
-function contOf(lat, lon) {
-  if (lat >= 34 && lat <= 72 && lon >= -26 && lon <= 46) return 'eu';
-  if (lat >= -38 && lat <= 37 && lon >= -20 && lon <= 55) return 'af';
-  if (lat >= -12 && lon >= 25 && lon <= 180) return 'as';
-  if (lat >= 12 && lon >= -172 && lon <= -30) return 'na';
-  if (lat < 13 && lon >= -95 && lon <= -30) return 'sa';
-  return 'oc';
-}
 function refreshMarkers() {
   const keep = state.cont === 'all';
   // rank = ordre d'ajout : les plats les plus emblématiques ont été écrits en premier,
   // ils l'emportent donc quand plusieurs fiches se superposent sur une même ville.
-  const list = DISHES.filter(d => keep || d.c === state.cont)
+  const list = DISHES.filter(d => (keep || d.c === state.cont) && matchFilters(d, state.filters))
     .map(d => ({
       id: d.id, lat: d.lat, lon: d.lon, label: d.n[state.lang],
       color: CONT_COLOR[d.c], rank: RANK[d.id]
     }));
-  if (ATLAS.on) {
-    for (const a of ATLAS.items) {
-      if (!keep && contOf(a.lat, a.lon) !== state.cont) continue;
-      list.push({ id: 'wd:' + a.q, lat: a.lat, lon: a.lon, label: a.name, kind: 'atlas' });
-    }
-  }
   globe.markers = list;
   updateCount();
 }
 function updateCount() {
   const el = $('#count'); if (!el) return;
-  const n = globe.markers.filter(m => m.kind !== 'atlas').length;
-  let s = n + ' ' + t('spec');
-  if (ATLAS.loading) s += ' · ' + t('atlasLoading');
-  else if (ATLAS.on) s += ' · ' + (globe.markers.length - n) + ' ' + t('atlasPoints');
-  else if (ATLAS.failed) s += ' · ' + t('atlasFail');
-  el.textContent = s;
+  const n = globe.markers.length;
+  el.textContent = n ? n + ' ' + t('spec') : t('fNone');
+  el.classList.toggle('empty', n === 0);
 }
 function setCont(c) {
   state.cont = c;
   document.querySelectorAll('.continents button[data-c]').forEach(b => b.classList.toggle('on', b.dataset.c === c));
   refreshMarkers();
+  if ($('#filterPanel') && $('#filterPanel').classList.contains('open')) renderFilters();
   const v = CONT_VIEW[c];
   globe.flyTo(v.lat, v.lon, v.z);
+}
+
+/* ---------- filtres ----------
+   Les continents disent où ; les filtres disent quoi. On les
+   garde repliés : ouverts en permanence ils mangeraient le globe
+   sur un téléphone, et la plupart des visites n'en ont pas besoin. */
+const FILTER_SECTIONS = [
+  { kind: 'without', label: 'fWithout', keys: ['meat', 'fish', 'pork', 'beef', 'alcohol'], dict: 'without' },
+  { kind: 'groups', label: 'fGroups', keys: ['veg', 'pork', 'beef', 'poultry', 'lamb', 'game', 'rabbit', 'fish', 'seafood'], dict: 'groups' },
+  { kind: 'diff', label: 'fDiff', keys: ['1', '2', '3'] },
+  { kind: 'speed', label: 'fSpeed', keys: ['fast', 'medium', 'long'], dict: 'speeds' },
+  { kind: 'tags', label: 'fTags', keys: ['veg', 'sea', 'festive', 'sunday', 'comfort', 'street', 'sweet', 'fast', 'slow'] }
+];
+
+function filterLabel(sec, key) {
+  if (sec.kind === 'diff') return t('diffs')[+key - 1];
+  if (sec.kind === 'tags') return (TAGS[key] || [])[L()] || key;
+  return (t(sec.dict) || {})[key] || key;
+}
+
+function activeFilterCount() {
+  const f = state.filters;
+  return f.without.size + f.groups.size + f.diff.size + f.speed.size + f.tags.size;
+}
+
+function renderFilters() {
+  const box = $('#filterPanel'); if (!box) return;
+  // le décompte se fait sur le continent choisi : afficher « 0 » pour une
+  // case utile ailleurs dans le monde serait trompeur
+  const pool = DISHES.filter(d => state.cont === 'all' || d.c === state.cont);
+  box.innerHTML = FILTER_SECTIONS.map(sec => {
+    const rows = sec.keys.map(k => {
+      const on = state.filters[sec.kind].has(k);
+      const n = on ? null : countFor(pool, state.filters, sec.kind, k);
+      const dead = n === 0 ? ' dead' : '';
+      return `<label class="fchip${on ? ' on' : ''}${dead}">`
+        + `<input type="checkbox" data-kind="${sec.kind}" data-key="${esc(k)}"${on ? ' checked' : ''}>`
+        + `<span>${esc(filterLabel(sec, k))}</span>`
+        + (n === null ? '' : `<b>${n}</b>`) + `</label>`;
+    }).join('');
+    return `<div class="fsec"><h4>${esc(t(sec.label))}</h4><div class="fchips">${rows}</div></div>`;
+  }).join('')
+    + `<button type="button" id="fclear" class="fclear">${esc(t('filtersClear'))}</button>`;
+
+  box.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = () => {
+    const set = state.filters[cb.dataset.kind];
+    cb.checked ? set.add(cb.dataset.key) : set.delete(cb.dataset.key);
+    applyFilters();
+  });
+  $('#fclear').onclick = () => { state.filters = emptyFilters(); applyFilters(); };
+}
+
+function applyFilters() {
+  refreshMarkers();
+  renderFilters();
+  const btn = $('#filterBtn'); if (!btn) return;
+  const n = activeFilterCount();
+  btn.textContent = n ? `${t('filters')} · ${n}` : t('filters');
+  btn.classList.toggle('on', n > 0);
+}
+
+function toggleFilters(force) {
+  const box = $('#filterPanel'); if (!box) return;
+  const open = force != null ? force : !box.classList.contains('open');
+  box.classList.toggle('open', open);
+  $('#filterBtn').setAttribute('aria-expanded', String(open));
+  if (open) renderFilters();
 }
 
 /* ---------- search ---------- */
@@ -363,21 +404,12 @@ function runSearch(q) {
   const hits = DISHES.filter(d =>
     LANGS.some(l => (d.n[l] && norm(d.n[l]).includes(nq)) || (d.p[l] && norm(d.p[l]).includes(nq)))
     || d.i.some(([id]) => ING[id] && norm(ING[id][L()]).includes(nq))).slice(0, 8);
-  const extra = ATLAS.on
-    ? ATLAS.items.filter(a => norm(a.name).includes(norm(q))).slice(0, 4)
-    : [];
-  box.innerHTML = (hits.length || extra.length)
+  box.innerHTML = hits.length
     ? hits.map(d => `<button data-go="${d.id}"><span>${esc(d.n[state.lang])}</span><small>${esc(d.p[state.lang])}</small></button>`).join('')
-    + extra.map(a => `<button data-wd="${a.q}"><span>${esc(a.name)}</span><small>${esc(a.country)} · ${t('encyclo')}</small></button>`).join('')
     : `<button disabled style="opacity:.6">${t('noRes')}</button>`;
   box.classList.add('on');
   box.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
     box.classList.remove('on'); $('#q').value = ''; select(b.dataset.go);
-  });
-  box.querySelectorAll('[data-wd]').forEach(b => b.onclick = () => {
-    box.classList.remove('on'); $('#q').value = '';
-    const a = ATLAS.items.find(x => x.q === b.dataset.wd);
-    if (a) selectAtlas({ id: 'wd:' + a.q, lat: a.lat, lon: a.lon, label: a.name, kind: 'atlas' });
   });
 }
 
@@ -400,16 +432,9 @@ async function setLang(l) {
   document.querySelectorAll('.continents button[data-c]').forEach(b => {
     b.textContent = b.dataset.c === 'all' ? t('all') : t('conts')[b.dataset.c];
   });
-  const ab = $('#atlas'); if (ab) { ab.textContent = t('atlas'); ab.title = t('atlasHelp'); }
+  if ($('#filterBtn')) applyFilters();
   refreshMarkers();
   state.dish ? renderDish() : renderEmpty();
-  // les libellés de l'atlas dépendent de la langue : rechargement discret
-  if (ATLAS.on && ATLAS.lang !== state.lang) {
-    ATLAS.loading = true; updateCount();
-    loadAtlas(state.lang).then(items => {
-      ATLAS.items = items; ATLAS.lang = state.lang;
-    }).catch(() => { }).then(() => { ATLAS.loading = false; refreshMarkers(); });
-  }
 }
 
 /* ---------- tooltip ---------- */
@@ -424,11 +449,8 @@ function showTip(m, x, y) {
   if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tip'; document.body.appendChild(tipEl); }
   if (!m) { tipEl.classList.remove('on'); return; }
   const d = DISHES.find(z => z.id === m.id);
-  if (d) tipEl.innerHTML = `${esc(d.n[state.lang])}<small>${esc(d.p[state.lang])}</small>`;
-  else {
-    const a = ATLAS.items.find(z => 'wd:' + z.q === m.id) || {};
-    tipEl.innerHTML = `${esc(m.label)}<small>${esc(a.country || '')}</small>`;
-  }
+  if (!d) { tipEl.classList.remove('on'); return; }
+  tipEl.innerHTML = `${esc(d.n[state.lang])}<small>${esc(d.p[state.lang])}</small>`;
   tipEl.style.left = (x + 16) + 'px'; tipEl.style.top = (y - 10) + 'px';
   tipEl.classList.add('on');
 }
@@ -440,7 +462,7 @@ function hideTip() { if (tipEl) tipEl.classList.remove('on'); }
    des spécialités de l'endroit, et c'est vous qui choisissez. */
 const PLACE_MENU_ZOOM = 5;   // en deçà, les points groupés couvrent une région entière
 const groupable = m =>
-  !!(m && m.kind !== 'atlas' && m.groupIds && m.groupIds.length && globe && globe.zoom >= PLACE_MENU_ZOOM);
+  !!(m && m.groupIds && m.groupIds.length && globe && globe.zoom >= PLACE_MENU_ZOOM);
 
 let menuEl, menuTimer, menuFor = null;
 function ensureMenu() {
@@ -522,14 +544,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     b.onclick = () => setCont(c);
     cbox.appendChild(b);
   });
-  const ab = document.createElement('button');
-  ab.id = 'atlas'; ab.className = 'atlas-toggle';
-  ab.onclick = toggleAtlas;
-  cbox.appendChild(ab);
+  const fb = document.createElement('button');
+  fb.id = 'filterBtn'; fb.className = 'filter-toggle';
+  fb.setAttribute('aria-expanded', 'false'); fb.setAttribute('aria-controls', 'filterPanel');
+  fb.onclick = () => toggleFilters();
+  cbox.appendChild(fb);
+  const fp = document.createElement('div');
+  fp.id = 'filterPanel'; fp.className = 'filterpanel';
+  cbox.insertAdjacentElement('afterend', fp);
+  applyFilters();
   document.querySelectorAll('.langs button').forEach(b => b.onclick = () => setLang(b.dataset.l));
   $('#q').addEventListener('input', e => runSearch(e.target.value));
   $('#q').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { const f = $('#results button[data-go],#results button[data-wd]'); if (f) f.click(); }
+    if (e.key === 'Enter') { const f = $('#results button[data-go]'); if (f) f.click(); }
     if (e.key === 'Escape') { $('#results').classList.remove('on'); e.target.blur(); }
   });
   document.addEventListener('click', e => {

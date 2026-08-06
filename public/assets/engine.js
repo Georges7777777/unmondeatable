@@ -21,12 +21,18 @@ const UI = {
     sameCity: 'Autres spécialités de la ville',
     photoAdd: 'Ajouter une photo', photoChange: 'Changer la photo',
     photoEditHelp: 'Importer votre propre photo pour ce plat',
-    photoReset: 'Revenir à la photo d’origine', photoMine: 'Votre photo',
+    photoReset: 'Revenir à la photo d’origine', photoMine: 'Générée par IA',
     photoSaving: 'Enregistrement…', photoSaved: 'Photo enregistrée',
     photoRemoved: 'Photo personnelle retirée', photoError: 'Impossible d’enregistrer cette image',
     photoBadType: 'Veuillez choisir un fichier image',
     loadError: 'Chargement impossible, vérifiez votre connexion',
-    atlas: 'Atlas mondial', atlasHelp: 'Ajoute des centaines de plats issus de Wikidata (sans recette)', atlasLoading: 'chargement de l’atlas…', atlasPoints: 'repères', atlasFail: 'atlas indisponible', encyclo: 'Fiche encyclopédique', noRecipe: 'Ce plat vient de l’atlas Wikidata : aucune recette n’est encore rédigée pour lui.', readMore: 'Lire sur Wikipédia'
+    filters: 'Filtres', filtersOn: 'filtre(s)', filtersClear: 'Tout effacer',
+    fWithout: 'Sans', fGroups: 'Ingrédient principal', fDiff: 'Difficulté', fSpeed: 'Temps total', fTags: 'Occasion',
+    fNone: 'Aucune fiche ne correspond à ces filtres',
+    without: { meat: 'viande', fish: 'poisson', pork: 'porc', beef: 'bœuf', alcohol: 'alcool' },
+    groups: { veg: 'Végétarien', pork: 'Porc', beef: 'Bœuf et veau', poultry: 'Volaille', lamb: 'Agneau et mouton',
+              game: 'Gibier', rabbit: 'Lapin', fish: 'Poisson', seafood: 'Fruits de mer' },
+    speeds: { fast: 'Moins de 45 min', medium: '45 min à 2 h', long: 'Plus de 2 h' },
   },
   en: {
     tagline: 'A Taste of the World', title1: 'A World at the', title2: 'Table',
@@ -45,12 +51,18 @@ const UI = {
     sameCity: 'Other specialities from this city',
     photoAdd: 'Add a photo', photoChange: 'Change photo',
     photoEditHelp: 'Upload your own photo for this dish',
-    photoReset: 'Back to the original photo', photoMine: 'Your photo',
+    photoReset: 'Back to the original photo', photoMine: 'AI-generated',
     photoSaving: 'Saving…', photoSaved: 'Photo saved',
     photoRemoved: 'Personal photo removed', photoError: 'Could not save this image',
     photoBadType: 'Please choose an image file',
     loadError: 'Could not load, check your connection',
-    atlas: 'World atlas', atlasHelp: 'Adds hundreds of dishes from Wikidata (no recipe)', atlasLoading: 'loading atlas…', atlasPoints: 'markers', atlasFail: 'atlas unavailable', encyclo: 'Encyclopaedic entry', noRecipe: 'This dish comes from the Wikidata atlas: no recipe has been written for it yet.', readMore: 'Read on Wikipedia'
+    filters: 'Filters', filtersOn: 'filter(s)', filtersClear: 'Clear all',
+    fWithout: 'Without', fGroups: 'Main ingredient', fDiff: 'Difficulty', fSpeed: 'Total time', fTags: 'Occasion',
+    fNone: 'No dish matches these filters',
+    without: { meat: 'meat', fish: 'fish', pork: 'pork', beef: 'beef', alcohol: 'alcohol' },
+    groups: { veg: 'Vegetarian', pork: 'Pork', beef: 'Beef and veal', poultry: 'Poultry', lamb: 'Lamb and mutton',
+              game: 'Game', rabbit: 'Rabbit', fish: 'Fish', seafood: 'Seafood' },
+    speeds: { fast: 'Under 45 min', medium: '45 min to 2 h', long: 'Over 2 h' },
   }
 };
 
@@ -284,6 +296,131 @@ async function syncFromDB(lang) {
 
 /* photos venant de la base, partagées par tous les visiteurs */
 const DB_PHOTO = {};
+
+/* ===== foodgroups.js ===== */
+/* ============================================================
+   foodgroups.js — à quelle famille appartient chaque ingrédient.
+
+   Sert aux filtres : « sans viande », « sans porc », « plats de
+   gibier »… Les bouillons et sauces d'origine animale figurent à
+   part : ils ne font pas d'un plat un plat de poisson, mais ils
+   empêchent de le dire végétarien.
+
+   Fichier engendré par scripts/make-foodgroups.mjs — ne pas
+   modifier à la main : corrigez plutôt les listes du script.
+   ============================================================ */
+const FOOD_GROUPS = {
+  pork: ['alheira_sausage', 'andouille', 'andouille_sausage', 'bacon', 'bayonne_ham', 'beef_trotters', 'chorizo', 'cooked_ham', 'farinheira', 'ground_pork', 'guanciale', 'ham', 'lard', 'marinated_pork', 'montbeliard_sausage', 'mortadella', 'nduja', 'pancetta', 'pinkel_sausage', 'pork_belly', 'pork_blood', 'pork_bones', 'pork_chops', 'pork_crackling', 'pork_cracklings', 'pork_ear', 'pork_fat', 'pork_kidney', 'pork_knuckle', 'pork_liver', 'pork_loin', 'pork_ribs', 'pork_rind', 'pork_sausage', 'pork_shank', 'pork_shoulder', 'pork_skin', 'pork_stomach', 'pork_trotters', 'prosciutto', 'salami', 'salt_pork', 'salted_pork', 'serrano_ham', 'smoked_bacon', 'smoked_ham', 'smoked_pork_collar', 'smoked_pork_loin', 'smoked_pork_ribs', 'strasbourg_sausage', 'toulouse_sausage'],
+  beef: ['beef_bones', 'beef_brisket', 'beef_chuck', 'beef_heart', 'beef_marrow', 'beef_ribeye', 'beef_ribs', 'beef_round', 'beef_rump', 'beef_shank', 'beef_shin', 'beef_short_ribs', 'beef_shoulder', 'beef_sirloin', 'beef_skirt', 'beef_slices', 'beef_steak', 'beef_suet', 'beef_tallow', 'beef_tbone', 'beef_tendon', 'beef_tripe', 'bone_marrow', 'carne_seca', 'cecina', 'charque', 'corned_beef', 'dried_beef', 'ground_beef', 'ground_veal', 'marrow_bone', 'oxtail', 'salted_beef', 'tripe', 'veal', 'veal_escalope', 'veal_foot', 'veal_shank', 'veal_shoulder'],
+  poultry: ['chicken', 'chicken_breast', 'chicken_gizzards', 'chicken_thighs', 'chicken_wings', 'duck', 'duck_confit', 'duck_fat', 'duck_legs', 'foie_gras', 'ground_chicken', 'hen', 'smoked_chicken', 'turkey', 'turkey_breast', 'whole_duck'],
+  lamb: ['goat_meat', 'goat_pepper', 'goat_stomach', 'ground_lamb', 'kazy_sausage', 'lamb', 'lamb_bones', 'lamb_fat', 'lamb_kidney', 'lamb_leg', 'lamb_shoulder', 'mutton_shoulder', 'mutton_tallow', 'sheep_pluck', 'wind_dried_mutton'],
+  game: ['horse_meat', 'partridge', 'reindeer', 'venison', 'whelks', 'wild_boar'],
+  rabbit: ['rabbit'],
+  fish: ['anchovy_fillets', 'bonito_flakes', 'canned_tuna', 'carp', 'catfish', 'cod', 'cod_fillet', 'dried_fish', 'eel', 'fish_cake', 'flying_fish', 'grouper', 'hilsa_fish', 'kingfish', 'lamprey', 'mackerel', 'monkfish', 'pickled_herring', 'pike', 'red_snapper', 'rockfish', 'salmon', 'salmon_roe', 'salt_cod', 'sardines', 'sea_bass', 'sea_bream', 'smoked_dried_tuna', 'smoked_fish', 'smoked_haddock', 'stockfish', 'tilapia', 'trout', 'tuna', 'white_fish', 'whitefish', 'whiting', 'whole_fish'],
+  seafood: ['clams', 'cockles', 'coconut_crab', 'conch', 'crab', 'crab_meat', 'crayfish', 'crayfish_powder', 'cuttlefish', 'dried_shrimp', 'king_crab_legs', 'lobster', 'mussels', 'octopus', 'oysters', 'river_prawns', 'scallops', 'shrimp', 'smoked_shrimp', 'snails', 'spot_prawns', 'squid', 'squid_ink'],
+  fish_trace: ['anchovy_broth', 'dashi_stock', 'fish_broth', 'fish_sauce', 'oyster_sauce', 'shrimp_paste', 'worcestershire'],
+  meat_trace: ['beef_bones', 'beef_broth', 'beef_stock', 'chicken_broth', 'chicken_stock', 'gelatin', 'lamb_bones', 'lard', 'pork_bones'],
+  alcohol: ['akvavit', 'armagnac', 'barolo_wine', 'beer', 'brandy', 'cachaca', 'calvados', 'dark_rum', 'dry_cider', 'dry_white_wine', 'kirsch', 'mirin', 'ouzo', 'port_wine', 'red_wine', 'rice_wine', 'rum', 'sherry', 'sparkling_wine', 'stout_beer', 'vodka', 'whisky', 'white_rum', 'white_wine']
+};
+
+/* ===== filters.js ===== */
+/* ============================================================
+   filters.js — trier les fiches autrement que par continent.
+
+   Deux logiques distinctes, qui se combinent :
+   — les exclusions (« sans porc », « sans alcool ») retirent des
+     fiches, et s'appliquent toujours en dernier ;
+   — les inclusions (« bœuf », « poisson ») n'en gardent que
+     certaines, et se cumulent entre elles : cocher bœuf ET
+     volaille montre les deux, pas leur intersection.
+
+   Un plat cuit dans un fond de veau n'est pas un plat de veau,
+   mais il n'est pas végétarien non plus : les bouillons et
+   sauces d'origine animale comptent donc pour les exclusions,
+   jamais pour les inclusions.
+   ============================================================ */
+
+/* famille → ingrédients, retourné à l'envers une fois pour toutes */
+const GROUP_OF = (() => {
+  const m = {};
+  for (const [g, list] of Object.entries(FOOD_GROUPS))
+    for (const id of list) (m[id] || (m[id] = [])).push(g);
+  return m;
+})();
+
+const MEAT_GROUPS = ['pork', 'beef', 'poultry', 'lamb', 'game', 'rabbit'];
+const SEA_GROUPS = ['fish', 'seafood'];
+
+/* familles présentes dans une fiche, calculées une seule fois */
+const GROUPS_CACHE = new Map();
+function groupsOf(d) {
+  let g = GROUPS_CACHE.get(d.id);
+  if (g) return g;
+  g = new Set();
+  for (const [id] of d.i) for (const x of (GROUP_OF[id] || [])) g.add(x);
+  GROUPS_CACHE.set(d.id, g);
+  return g;
+}
+function forgetGroups(id) { if (id) GROUPS_CACHE.delete(id); else GROUPS_CACHE.clear(); }
+
+const hasMeat = g => MEAT_GROUPS.some(x => g.has(x)) || g.has('meat_trace');
+const hasSea = g => SEA_GROUPS.some(x => g.has(x)) || g.has('fish_trace');
+
+/* temps total, en trois paliers */
+function speedOf(d) {
+  const total = (d.prep || 0) + (d.cook || 0);
+  return total <= 45 ? 'fast' : total <= 120 ? 'medium' : 'long';
+}
+
+/* état vide : aucun filtre actif */
+function emptyFilters() {
+  return { without: new Set(), groups: new Set(), diff: new Set(), speed: new Set(), tags: new Set() };
+}
+const noFilters = f =>
+  !f || (!f.without.size && !f.groups.size && !f.diff.size && !f.speed.size && !f.tags.size);
+
+const WITHOUT_TEST = {
+  meat: g => !hasMeat(g),
+  fish: g => !hasSea(g),
+  pork: g => !g.has('pork'),
+  beef: g => !g.has('beef'),
+  alcohol: g => !g.has('alcohol')
+};
+
+function matchFilters(d, f) {
+  if (noFilters(f)) return true;
+  const g = groupsOf(d);
+
+  for (const w of f.without) { const test = WITHOUT_TEST[w]; if (test && !test(g)) return false; }
+
+  if (f.groups.size) {
+    let hit = false;
+    for (const k of f.groups) {
+      if (k === 'veg') { if (!hasMeat(g) && !hasSea(g)) { hit = true; break; } }
+      else if (g.has(k)) { hit = true; break; }
+    }
+    if (!hit) return false;
+  }
+
+  if (f.diff.size && !f.diff.has(String(d.diff))) return false;
+  if (f.speed.size && !f.speed.has(speedOf(d))) return false;
+  if (f.tags.size && !(d.tags || []).some(x => f.tags.has(x))) return false;
+  return true;
+}
+
+/* combien de fiches chaque case laisserait passer, les autres
+   réglages restant en place : un compteur mort dit tout de suite
+   qu'il est inutile de cocher */
+function countFor(dishes, f, kind, key) {
+  const probe = {
+    without: new Set(f.without), groups: new Set(f.groups),
+    diff: new Set(f.diff), speed: new Set(f.speed), tags: new Set(f.tags)
+  };
+  probe[kind].add(key);
+  let n = 0;
+  for (const d of dishes) if (matchFilters(d, probe)) n++;
+  return n;
+}
 
 /* ===== admin.js ===== */
 /* ============================================================
@@ -950,190 +1087,6 @@ function fillPhoto(box, d, credit) {
       }
     };
     img.src = p.url;
-  }).catch(() => { });
-}
-
-/* ===== atlas.js ===== */
-/* ============================================================
-   Atlas — couche encyclopédique alimentée par Wikidata.
-   Des centaines de plats supplémentaires (nom, pays, photo,
-   résumé) sans recette, en complément des fiches rédigées.
-   ============================================================ */
-const ATLAS = { on: false, items: [], loading: false, failed: false, lang: null };
-const WDQS = 'https://query.wikidata.org/sparql';
-
-const SPARQL = lang => `SELECT ?d ?dLabel ?img ?c ?cLabel ?coord WHERE {
-  ?d wdt:P31 wd:Q746549 ; wdt:P18 ?img ; wdt:P495 ?c .
-  ?c wdt:P625 ?coord .
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "${lang},en". }
-} LIMIT 2000`;
-
-/* --- clés de comparaison pour ne pas doublonner les fiches rédigées --- */
-function norm(s) {
-  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
-    .toLowerCase().replace(/[^a-z0-9]+/g, '');
-}
-let CURATED_KEYS = null;
-function curatedKeys() {
-  if (CURATED_KEYS) return CURATED_KEYS;
-  CURATED_KEYS = new Set();
-  for (const d of DISHES) {
-    for (const l of LANGS) CURATED_KEYS.add(norm(d.n[l]));
-    const w = WIKI[d.id] || [];
-    w.forEach(x => x && CURATED_KEYS.add(norm(x)));
-  }
-  return CURATED_KEYS;
-}
-// « Francesinha do Porto » doit être reconnu comme doublon de « Francesinha »
-function isCurated(name) {
-  const k = norm(name);
-  if (!k) return true;
-  const keys = curatedKeys();
-  if (keys.has(k)) return true;
-  for (const c of keys) {
-    if (c.length >= 7 && (k.includes(c) || c.includes(k))) return true;
-  }
-  return false;
-}
-
-/* --- dispersion déterministe autour du centre du pays --- */
-function spread(qid, lat, lon) {
-  let h = 2166136261;
-  for (let i = 0; i < qid.length; i++) { h ^= qid.charCodeAt(i); h = Math.imul(h, 16777619); }
-  const a = ((h >>> 0) % 3600) / 3600 * Math.PI * 2;
-  const r = 0.45 + (((h >>> 9) % 1000) / 1000) * 1.5;
-  const dLat = Math.sin(a) * r;
-  const dLon = Math.cos(a) * r / Math.max(0.25, Math.cos(lat * Math.PI / 180));
-  return [Math.max(-84, Math.min(84, lat + dLat)), wrapLon(lon + dLon)];
-}
-
-/* --- cache local (ignoré si le navigateur le refuse en file://) --- */
-function cacheGet(k) {
-  try {
-    const raw = localStorage.getItem(k);
-    if (!raw) return null;
-    const o = JSON.parse(raw);
-    if (!o || Date.now() - o.t > 30 * 864e5) return null;
-    return o.v;
-  } catch (e) { return null; }
-}
-function cacheSet(k, v) {
-  try { localStorage.setItem(k, JSON.stringify({ t: Date.now(), v })); } catch (e) { }
-}
-
-async function loadAtlas(lang) {
-  const key = 'gdm-atlas-' + lang;
-  const hit = cacheGet(key);
-  if (hit) return hit;
-  const url = WDQS + '?format=json&query=' + encodeURIComponent(SPARQL(lang));
-  const r = await fetch(url, { headers: { Accept: 'application/sparql-results+json' } });
-  if (!r.ok) throw new Error(r.status);
-  const j = await r.json();
-  const seen = new Set(), out = [];
-  for (const b of (j.results && j.results.bindings) || []) {
-    const qid = (b.d.value.split('/').pop() || '');
-    if (seen.has(qid)) continue;
-    const name = b.dLabel && b.dLabel.value;
-    if (!name || /^Q\d+$/.test(name)) continue;      // sans libellé traduit
-    if (isCurated(name)) continue;                   // déjà rédigé à la main
-    const m = /Point\(([-\d.]+) ([-\d.]+)\)/.exec((b.coord && b.coord.value) || '');
-    if (!m) continue;
-    seen.add(qid);
-    const [lat, lon] = spread(qid, parseFloat(m[2]), parseFloat(m[1]));
-    out.push({
-      q: qid, name, lat, lon,
-      country: (b.cLabel && b.cLabel.value) || '',
-      file: decodeURIComponent((b.img.value.split('FilePath/')[1] || '')).replace(/_/g, ' ')
-    });
-  }
-  cacheSet(key, out);
-  return out;
-}
-
-/* --- activation / désactivation --- */
-async function toggleAtlas() {
-  const btn = $('#atlas');
-  if (ATLAS.on) {
-    ATLAS.on = false; btn.classList.remove('on');
-    refreshMarkers();
-    return;
-  }
-  ATLAS.on = true; btn.classList.add('on');
-  if (ATLAS.items.length && ATLAS.lang === state.lang) { refreshMarkers(); return; }
-  ATLAS.loading = true; btn.classList.add('busy'); updateCount();
-  try {
-    ATLAS.items = await loadAtlas(state.lang);
-    ATLAS.lang = state.lang; ATLAS.failed = false;
-  } catch (e) {
-    ATLAS.items = []; ATLAS.failed = true; ATLAS.on = false; btn.classList.remove('on');
-  }
-  ATLAS.loading = false; btn.classList.remove('busy');
-  refreshMarkers();
-}
-
-/* --- fiche encyclopédique --- */
-const ATLAS_INFO = {};
-async function atlasDetails(q, lang) {
-  const ck = q + ':' + lang;
-  if (ATLAS_INFO[ck]) return ATLAS_INFO[ck];
-  const out = { extract: '', url: '', title: '' };
-  try {
-    const sites = LANGS.map(l => l + 'wiki').join('|');
-    const j = await apiGet(`https://www.wikidata.org/w/api.php?action=wbgetentities&format=json&origin=*&ids=${q}&props=sitelinks|descriptions&languages=${LANGS.join('|')}&sitefilter=${sites}`);
-    const ent = j.entities && j.entities[q];
-    if (ent) {
-      const order = [lang, 'en', 'fr'];
-      for (const l of order) {
-        const sl = ent.sitelinks && ent.sitelinks[l + 'wiki'];
-        if (sl) { out.title = sl.title; out.wikilang = l; break; }
-      }
-      const de = ent.descriptions && (ent.descriptions[lang] || ent.descriptions.en);
-      if (de) out.extract = de.value;
-    }
-    if (out.title) {
-      out.url = `https://${out.wikilang}.wikipedia.org/wiki/${encodeURIComponent(out.title.replace(/ /g, '_'))}`;
-      const e = await apiGet(`https://${out.wikilang}.wikipedia.org/w/api.php?action=query&format=json&origin=*&prop=extracts&exintro=1&explaintext=1&exsentences=3&redirects=1&titles=${encodeURIComponent(out.title)}`);
-      const pages = (e.query && e.query.pages) || {};
-      for (const k in pages) if (pages[k].extract) out.extract = pages[k].extract;
-    }
-  } catch (err) { }
-  ATLAS_INFO[ck] = out;
-  return out;
-}
-
-function renderAtlasCard(m) {
-  const it = ATLAS.items.find(x => x.q === m.id.slice(3));
-  if (!it) return;
-  const src = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(it.file)}?width=1000`;
-  $('#panel').innerHTML = `
-  <div class="hero fade">
-    <div class="art" id="art"><img class="photo on" src="${src}" alt="${esc(it.name)}"></div>
-    <div class="credit" id="credit"></div>
-    <button class="close" title="${t('close')}">✕</button>
-    <div class="cap">
-      <h2>${esc(it.name)}</h2>
-      <div class="loc"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>${esc(it.country)}</div>
-    </div>
-  </div>
-  <div class="body">
-    <div class="tags"><span>${t('encyclo')}</span></div>
-    <p class="desc" id="ax">…</p>
-    <p><a class="wlink" id="wl" href="#" target="_blank" rel="noopener" style="display:none">${t('readMore')} ↗</a></p>
-    <p class="norecipe">${t('noRecipe')}</p>
-  </div>`;
-  $('#panel .close').onclick = deselect;
-  $('#panel').scrollTop = 0;
-  atlasDetails(it.q, state.lang).then(info => {
-    const ax = $('#ax'); if (!ax) return;
-    ax.textContent = info.extract || '';
-    if (info.url) { const a = $('#wl'); a.href = info.url; a.style.display = 'inline'; }
-  });
-  fileInfo(it.file, 1000).then(p => {
-    const c = $('#credit');
-    if (!p || !c) return;
-    const who = [p.author, p.license].filter(Boolean).join(' · ') || 'Wikimedia Commons';
-    c.innerHTML = p.page ? `${t('photoBy')} <a href="${p.page}" target="_blank" rel="noopener">${esc(who)}</a>` : `${t('photoBy')} ${esc(who)}`;
-    c.classList.add('on');
   }).catch(() => { });
 }
 
@@ -1806,7 +1759,7 @@ const CONT_VIEW = {
 };
 const CONT_COLOR = { eu: '#e4633a', as: '#e0913a', af: '#d9b13a', na: '#c96f9a', sa: '#6fbf8f', oc: '#5aa8d9' };
 
-const state = { lang: 'fr', dish: null, servings: 4, cont: 'all' };
+const state = { lang: 'fr', dish: null, servings: 4, cont: 'all', filters: emptyFilters() };
 let globe;
 
 /* ---------- villes ----------
@@ -2062,7 +2015,6 @@ function setServings(n) {
 
 /* ---------- selection ---------- */
 function pickMarker(m, keepZoom) {
-  if (m.kind === 'atlas') return selectAtlas(m, keepZoom);
   // au doigt il n'y a pas de survol : le clic ouvre lui aussi la liste
   if (groupable(m)) {
     const r = $('#globe').getBoundingClientRect();
@@ -2070,14 +2022,6 @@ function pickMarker(m, keepZoom) {
     return;
   }
   select(m.id, keepZoom);
-}
-function selectAtlas(m, keepZoom) {
-  state.dish = null;
-  globe.active = m.id;
-  globe.flyTo(m.lat, m.lon, keepZoom ? Math.max(globe.tZoom, 3) : 3.6);
-  $('#panel').classList.remove('hidden');
-  renderAtlasCard(m);
-  hideHint();
 }
 function select(id, keepZoom) {
   const d = DISHES.find(x => x.id === id);
@@ -2102,48 +2046,98 @@ function deselect() {
 }
 
 /* ---------- markers / filter ---------- */
-// continent approximatif d'un point (pour filtrer la couche atlas)
-function contOf(lat, lon) {
-  if (lat >= 34 && lat <= 72 && lon >= -26 && lon <= 46) return 'eu';
-  if (lat >= -38 && lat <= 37 && lon >= -20 && lon <= 55) return 'af';
-  if (lat >= -12 && lon >= 25 && lon <= 180) return 'as';
-  if (lat >= 12 && lon >= -172 && lon <= -30) return 'na';
-  if (lat < 13 && lon >= -95 && lon <= -30) return 'sa';
-  return 'oc';
-}
 function refreshMarkers() {
   const keep = state.cont === 'all';
   // rank = ordre d'ajout : les plats les plus emblématiques ont été écrits en premier,
   // ils l'emportent donc quand plusieurs fiches se superposent sur une même ville.
-  const list = DISHES.filter(d => keep || d.c === state.cont)
+  const list = DISHES.filter(d => (keep || d.c === state.cont) && matchFilters(d, state.filters))
     .map(d => ({
       id: d.id, lat: d.lat, lon: d.lon, label: d.n[state.lang],
       color: CONT_COLOR[d.c], rank: RANK[d.id]
     }));
-  if (ATLAS.on) {
-    for (const a of ATLAS.items) {
-      if (!keep && contOf(a.lat, a.lon) !== state.cont) continue;
-      list.push({ id: 'wd:' + a.q, lat: a.lat, lon: a.lon, label: a.name, kind: 'atlas' });
-    }
-  }
   globe.markers = list;
   updateCount();
 }
 function updateCount() {
   const el = $('#count'); if (!el) return;
-  const n = globe.markers.filter(m => m.kind !== 'atlas').length;
-  let s = n + ' ' + t('spec');
-  if (ATLAS.loading) s += ' · ' + t('atlasLoading');
-  else if (ATLAS.on) s += ' · ' + (globe.markers.length - n) + ' ' + t('atlasPoints');
-  else if (ATLAS.failed) s += ' · ' + t('atlasFail');
-  el.textContent = s;
+  const n = globe.markers.length;
+  el.textContent = n ? n + ' ' + t('spec') : t('fNone');
+  el.classList.toggle('empty', n === 0);
 }
 function setCont(c) {
   state.cont = c;
   document.querySelectorAll('.continents button[data-c]').forEach(b => b.classList.toggle('on', b.dataset.c === c));
   refreshMarkers();
+  if ($('#filterPanel') && $('#filterPanel').classList.contains('open')) renderFilters();
   const v = CONT_VIEW[c];
   globe.flyTo(v.lat, v.lon, v.z);
+}
+
+/* ---------- filtres ----------
+   Les continents disent où ; les filtres disent quoi. On les
+   garde repliés : ouverts en permanence ils mangeraient le globe
+   sur un téléphone, et la plupart des visites n'en ont pas besoin. */
+const FILTER_SECTIONS = [
+  { kind: 'without', label: 'fWithout', keys: ['meat', 'fish', 'pork', 'beef', 'alcohol'], dict: 'without' },
+  { kind: 'groups', label: 'fGroups', keys: ['veg', 'pork', 'beef', 'poultry', 'lamb', 'game', 'rabbit', 'fish', 'seafood'], dict: 'groups' },
+  { kind: 'diff', label: 'fDiff', keys: ['1', '2', '3'] },
+  { kind: 'speed', label: 'fSpeed', keys: ['fast', 'medium', 'long'], dict: 'speeds' },
+  { kind: 'tags', label: 'fTags', keys: ['veg', 'sea', 'festive', 'sunday', 'comfort', 'street', 'sweet', 'fast', 'slow'] }
+];
+
+function filterLabel(sec, key) {
+  if (sec.kind === 'diff') return t('diffs')[+key - 1];
+  if (sec.kind === 'tags') return (TAGS[key] || [])[L()] || key;
+  return (t(sec.dict) || {})[key] || key;
+}
+
+function activeFilterCount() {
+  const f = state.filters;
+  return f.without.size + f.groups.size + f.diff.size + f.speed.size + f.tags.size;
+}
+
+function renderFilters() {
+  const box = $('#filterPanel'); if (!box) return;
+  // le décompte se fait sur le continent choisi : afficher « 0 » pour une
+  // case utile ailleurs dans le monde serait trompeur
+  const pool = DISHES.filter(d => state.cont === 'all' || d.c === state.cont);
+  box.innerHTML = FILTER_SECTIONS.map(sec => {
+    const rows = sec.keys.map(k => {
+      const on = state.filters[sec.kind].has(k);
+      const n = on ? null : countFor(pool, state.filters, sec.kind, k);
+      const dead = n === 0 ? ' dead' : '';
+      return `<label class="fchip${on ? ' on' : ''}${dead}">`
+        + `<input type="checkbox" data-kind="${sec.kind}" data-key="${esc(k)}"${on ? ' checked' : ''}>`
+        + `<span>${esc(filterLabel(sec, k))}</span>`
+        + (n === null ? '' : `<b>${n}</b>`) + `</label>`;
+    }).join('');
+    return `<div class="fsec"><h4>${esc(t(sec.label))}</h4><div class="fchips">${rows}</div></div>`;
+  }).join('')
+    + `<button type="button" id="fclear" class="fclear">${esc(t('filtersClear'))}</button>`;
+
+  box.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = () => {
+    const set = state.filters[cb.dataset.kind];
+    cb.checked ? set.add(cb.dataset.key) : set.delete(cb.dataset.key);
+    applyFilters();
+  });
+  $('#fclear').onclick = () => { state.filters = emptyFilters(); applyFilters(); };
+}
+
+function applyFilters() {
+  refreshMarkers();
+  renderFilters();
+  const btn = $('#filterBtn'); if (!btn) return;
+  const n = activeFilterCount();
+  btn.textContent = n ? `${t('filters')} · ${n}` : t('filters');
+  btn.classList.toggle('on', n > 0);
+}
+
+function toggleFilters(force) {
+  const box = $('#filterPanel'); if (!box) return;
+  const open = force != null ? force : !box.classList.contains('open');
+  box.classList.toggle('open', open);
+  $('#filterBtn').setAttribute('aria-expanded', String(open));
+  if (open) renderFilters();
 }
 
 /* ---------- search ---------- */
@@ -2157,21 +2151,12 @@ function runSearch(q) {
   const hits = DISHES.filter(d =>
     LANGS.some(l => (d.n[l] && norm(d.n[l]).includes(nq)) || (d.p[l] && norm(d.p[l]).includes(nq)))
     || d.i.some(([id]) => ING[id] && norm(ING[id][L()]).includes(nq))).slice(0, 8);
-  const extra = ATLAS.on
-    ? ATLAS.items.filter(a => norm(a.name).includes(norm(q))).slice(0, 4)
-    : [];
-  box.innerHTML = (hits.length || extra.length)
+  box.innerHTML = hits.length
     ? hits.map(d => `<button data-go="${d.id}"><span>${esc(d.n[state.lang])}</span><small>${esc(d.p[state.lang])}</small></button>`).join('')
-    + extra.map(a => `<button data-wd="${a.q}"><span>${esc(a.name)}</span><small>${esc(a.country)} · ${t('encyclo')}</small></button>`).join('')
     : `<button disabled style="opacity:.6">${t('noRes')}</button>`;
   box.classList.add('on');
   box.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
     box.classList.remove('on'); $('#q').value = ''; select(b.dataset.go);
-  });
-  box.querySelectorAll('[data-wd]').forEach(b => b.onclick = () => {
-    box.classList.remove('on'); $('#q').value = '';
-    const a = ATLAS.items.find(x => x.q === b.dataset.wd);
-    if (a) selectAtlas({ id: 'wd:' + a.q, lat: a.lat, lon: a.lon, label: a.name, kind: 'atlas' });
   });
 }
 
@@ -2194,16 +2179,9 @@ async function setLang(l) {
   document.querySelectorAll('.continents button[data-c]').forEach(b => {
     b.textContent = b.dataset.c === 'all' ? t('all') : t('conts')[b.dataset.c];
   });
-  const ab = $('#atlas'); if (ab) { ab.textContent = t('atlas'); ab.title = t('atlasHelp'); }
+  if ($('#filterBtn')) applyFilters();
   refreshMarkers();
   state.dish ? renderDish() : renderEmpty();
-  // les libellés de l'atlas dépendent de la langue : rechargement discret
-  if (ATLAS.on && ATLAS.lang !== state.lang) {
-    ATLAS.loading = true; updateCount();
-    loadAtlas(state.lang).then(items => {
-      ATLAS.items = items; ATLAS.lang = state.lang;
-    }).catch(() => { }).then(() => { ATLAS.loading = false; refreshMarkers(); });
-  }
 }
 
 /* ---------- tooltip ---------- */
@@ -2218,11 +2196,8 @@ function showTip(m, x, y) {
   if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tip'; document.body.appendChild(tipEl); }
   if (!m) { tipEl.classList.remove('on'); return; }
   const d = DISHES.find(z => z.id === m.id);
-  if (d) tipEl.innerHTML = `${esc(d.n[state.lang])}<small>${esc(d.p[state.lang])}</small>`;
-  else {
-    const a = ATLAS.items.find(z => 'wd:' + z.q === m.id) || {};
-    tipEl.innerHTML = `${esc(m.label)}<small>${esc(a.country || '')}</small>`;
-  }
+  if (!d) { tipEl.classList.remove('on'); return; }
+  tipEl.innerHTML = `${esc(d.n[state.lang])}<small>${esc(d.p[state.lang])}</small>`;
   tipEl.style.left = (x + 16) + 'px'; tipEl.style.top = (y - 10) + 'px';
   tipEl.classList.add('on');
 }
@@ -2234,7 +2209,7 @@ function hideTip() { if (tipEl) tipEl.classList.remove('on'); }
    des spécialités de l'endroit, et c'est vous qui choisissez. */
 const PLACE_MENU_ZOOM = 5;   // en deçà, les points groupés couvrent une région entière
 const groupable = m =>
-  !!(m && m.kind !== 'atlas' && m.groupIds && m.groupIds.length && globe && globe.zoom >= PLACE_MENU_ZOOM);
+  !!(m && m.groupIds && m.groupIds.length && globe && globe.zoom >= PLACE_MENU_ZOOM);
 
 let menuEl, menuTimer, menuFor = null;
 function ensureMenu() {
@@ -2316,14 +2291,19 @@ window.addEventListener('DOMContentLoaded', async () => {
     b.onclick = () => setCont(c);
     cbox.appendChild(b);
   });
-  const ab = document.createElement('button');
-  ab.id = 'atlas'; ab.className = 'atlas-toggle';
-  ab.onclick = toggleAtlas;
-  cbox.appendChild(ab);
+  const fb = document.createElement('button');
+  fb.id = 'filterBtn'; fb.className = 'filter-toggle';
+  fb.setAttribute('aria-expanded', 'false'); fb.setAttribute('aria-controls', 'filterPanel');
+  fb.onclick = () => toggleFilters();
+  cbox.appendChild(fb);
+  const fp = document.createElement('div');
+  fp.id = 'filterPanel'; fp.className = 'filterpanel';
+  cbox.insertAdjacentElement('afterend', fp);
+  applyFilters();
   document.querySelectorAll('.langs button').forEach(b => b.onclick = () => setLang(b.dataset.l));
   $('#q').addEventListener('input', e => runSearch(e.target.value));
   $('#q').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { const f = $('#results button[data-go],#results button[data-wd]'); if (f) f.click(); }
+    if (e.key === 'Enter') { const f = $('#results button[data-go]'); if (f) f.click(); }
     if (e.key === 'Escape') { $('#results').classList.remove('on'); e.target.blur(); }
   });
   document.addEventListener('click', e => {

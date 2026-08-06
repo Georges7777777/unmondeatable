@@ -20,12 +20,18 @@ const UI = {
     sameCity: 'Autres spécialités de la ville',
     photoAdd: 'Ajouter une photo', photoChange: 'Changer la photo',
     photoEditHelp: 'Importer votre propre photo pour ce plat',
-    photoReset: 'Revenir à la photo d’origine', photoMine: 'Votre photo',
+    photoReset: 'Revenir à la photo d’origine', photoMine: 'Générée par IA',
     photoSaving: 'Enregistrement…', photoSaved: 'Photo enregistrée',
     photoRemoved: 'Photo personnelle retirée', photoError: 'Impossible d’enregistrer cette image',
     photoBadType: 'Veuillez choisir un fichier image',
     loadError: 'Chargement impossible, vérifiez votre connexion',
-    atlas: 'Atlas mondial', atlasHelp: 'Ajoute des centaines de plats issus de Wikidata (sans recette)', atlasLoading: 'chargement de l’atlas…', atlasPoints: 'repères', atlasFail: 'atlas indisponible', encyclo: 'Fiche encyclopédique', noRecipe: 'Ce plat vient de l’atlas Wikidata : aucune recette n’est encore rédigée pour lui.', readMore: 'Lire sur Wikipédia'
+    filters: 'Filtres', filtersOn: 'filtre(s)', filtersClear: 'Tout effacer',
+    fWithout: 'Sans', fGroups: 'Ingrédient principal', fDiff: 'Difficulté', fSpeed: 'Temps total', fTags: 'Occasion',
+    fNone: 'Aucune fiche ne correspond à ces filtres',
+    without: { meat: 'viande', fish: 'poisson', pork: 'porc', beef: 'bœuf', alcohol: 'alcool' },
+    groups: { veg: 'Végétarien', pork: 'Porc', beef: 'Bœuf et veau', poultry: 'Volaille', lamb: 'Agneau et mouton',
+              game: 'Gibier', rabbit: 'Lapin', fish: 'Poisson', seafood: 'Fruits de mer' },
+    speeds: { fast: 'Moins de 45 min', medium: '45 min à 2 h', long: 'Plus de 2 h' },
   },
   en: {
     tagline: 'A Taste of the World', title1: 'A World at the', title2: 'Table',
@@ -44,12 +50,18 @@ const UI = {
     sameCity: 'Other specialities from this city',
     photoAdd: 'Add a photo', photoChange: 'Change photo',
     photoEditHelp: 'Upload your own photo for this dish',
-    photoReset: 'Back to the original photo', photoMine: 'Your photo',
+    photoReset: 'Back to the original photo', photoMine: 'AI-generated',
     photoSaving: 'Saving…', photoSaved: 'Photo saved',
     photoRemoved: 'Personal photo removed', photoError: 'Could not save this image',
     photoBadType: 'Please choose an image file',
     loadError: 'Could not load, check your connection',
-    atlas: 'World atlas', atlasHelp: 'Adds hundreds of dishes from Wikidata (no recipe)', atlasLoading: 'loading atlas…', atlasPoints: 'markers', atlasFail: 'atlas unavailable', encyclo: 'Encyclopaedic entry', noRecipe: 'This dish comes from the Wikidata atlas: no recipe has been written for it yet.', readMore: 'Read on Wikipedia'
+    filters: 'Filters', filtersOn: 'filter(s)', filtersClear: 'Clear all',
+    fWithout: 'Without', fGroups: 'Main ingredient', fDiff: 'Difficulty', fSpeed: 'Total time', fTags: 'Occasion',
+    fNone: 'No dish matches these filters',
+    without: { meat: 'meat', fish: 'fish', pork: 'pork', beef: 'beef', alcohol: 'alcohol' },
+    groups: { veg: 'Vegetarian', pork: 'Pork', beef: 'Beef and veal', poultry: 'Poultry', lamb: 'Lamb and mutton',
+              game: 'Game', rabbit: 'Rabbit', fish: 'Fish', seafood: 'Seafood' },
+    speeds: { fast: 'Under 45 min', medium: '45 min to 2 h', long: 'Over 2 h' },
   }
 };
 
