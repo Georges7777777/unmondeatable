@@ -18,7 +18,21 @@ const dom = await JSDOM.fromURL(BASE, {
   resources: 'usable',
   pretendToBeVisual: true,
   beforeParse(window) {
-    window.fetch = (u, o) => fetch(new URL(u, BASE).href, o);
+    /* Ouvrir les 1200 fiches déclenche autant de recherches de photo chez
+       Wikimedia. Hors ligne, ces requêtes ne se referment jamais : chacune
+       retient sa promesse, son minuteur et son AbortController, et la mémoire
+       du test finit par saturer. On répond donc « article inconnu » tout de
+       suite : le test porte sur l'ouverture des fiches, pas sur les photos. */
+    window.fetch = (u, o) => {
+      const s = String(u);
+      if (/wikipedia\.org|wikimedia\.org/.test(s)) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ query: { pages: { '-1': { missing: '' } } } })
+        });
+      }
+      return fetch(new URL(s, BASE).href, o);
+    };
     let store = {};
     Object.defineProperty(window, 'localStorage', { value: {
       getItem: k => (k in store ? store[k] : null),
@@ -64,8 +78,12 @@ check('aucune fiche perdue',
 
 // --- ouverture des fiches ---
 let bad = 0;
-for (const id of w.eval('DISHES.map(d=>d.id)')) {
-  try { w.eval(`select(${JSON.stringify(id)})`); } catch (e) { bad++; }
+const tousLesIds = w.eval('DISHES.map(d=>d.id)');
+for (let i = 0; i < tousLesIds.length; i++) {
+  try { w.eval(`select(${JSON.stringify(tousLesIds[i])})`); } catch (e) { bad++; }
+  // on rend la main tous les cent plats : les minuteurs en attente se
+  // déclenchent et le ramasse-miettes peut libérer les fiches précédentes
+  if (i % 100 === 99) await wait(0);
 }
 check('toutes les fiches s’ouvrent', bad === 0, bad + ' échec(s)');
 check('recette affichée', /(<li>)/.test(w.document.querySelector('#panel').innerHTML));

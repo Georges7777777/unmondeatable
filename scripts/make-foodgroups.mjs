@@ -37,9 +37,11 @@ const PAS_ALCOOL = /vinegar|portobello/i;
 /* le motif attrape trop, ou pas assez */
 const RETIRER = {
   pork: ['collard_greens', 'graham_crackers', 'beef_sausage', 'kazy_sausage', 'smen',
+    'lamb_sausage',
     'sausage_casing', 'black_sausage', 'blood_sausage', 'white_sausage', 'fresh_sausage',
     'sausage', 'smoked_sausage'],
-  beef: ['red_kidney_beans', 'beef_broth', 'beef_stock', 'lamb_kidney', 'ground_veal', 'mutton_tallow'],
+  beef: ['red_kidney_beans', 'beef_broth', 'beef_stock', 'lamb_kidney', 'ground_veal', 'mutton_tallow',
+    'sheep_suet', 'sheep_blood', 'sheep_head'],
   poultry: ['chicken_broth', 'chicken_stock', 'quail_egg', 'pigeon_peas'],
   fish: ['mascarpone', 'lemon_peel', 'fish_sauce', 'anchovy_broth', 'fish_broth',
     'crayfish', 'crayfish_powder', 'cuttlefish', 'dashi_stock'],
@@ -47,13 +49,18 @@ const RETIRER = {
   game: ['horseradish']
 };
 const AJOUTER = {
-  beef: ['ground_veal', 'veal_foot', 'veal_shank', 'veal_shoulder', 'veal_escalope', 'jameed'],
-  lamb: ['kazy_sausage', 'sheep_pluck', 'mutton_tallow'],
-  seafood: ['cuttlefish', 'crayfish', 'crayfish_powder'],
+  beef: ['ground_veal', 'veal_foot', 'veal_shank', 'veal_shoulder', 'veal_escalope', 'jameed',
+    'sirloin_steak'],
+  pork: ['pig_caul'],
+  lamb: ['kazy_sausage', 'sheep_pluck', 'mutton_tallow', 'lamb_sausage',
+    'sheep_suet', 'sheep_blood', 'sheep_head', 'ram_testicles'],
+  seafood: ['cuttlefish', 'crayfish', 'crayfish_powder', 'limpets'],
+  fish: ['greenland_shark'],
   /* invisibles dans l'assiette, décisifs pour un végétarien */
   fish_trace: ['fish_sauce', 'anchovy_broth', 'fish_broth', 'dashi_stock', 'shrimp_paste',
     'oyster_sauce', 'worcestershire', 'nam_pla', 'bagoong', 'patis'],
-  meat_trace: ['beef_broth', 'beef_stock', 'chicken_broth', 'chicken_stock', 'lamb_bones',
+  meat_trace: ['marshmallows', 'pig_caul',
+    'beef_broth', 'beef_stock', 'chicken_broth', 'chicken_stock', 'lamb_bones',
     'pork_bones', 'beef_bones', 'veal_bones', 'gelatin', 'meat_stock', 'lard']
 };
 
