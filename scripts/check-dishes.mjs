@@ -100,6 +100,25 @@ for (const d of DISHES) {
 /* Plusieurs fiches peuvent partager une ville : le globe les regroupe et
    propose la liste. Ce n'est donc pas une anomalie, on ne la signale pas. */
 
+/* Deux identifiants ne peuvent pas porter le même libellé. L'export Excel
+   n'écrit que le nom lisible : à la réimportation, un libellé partagé par
+   deux ingrédients devient impossible à réattribuer, et la fiche revient
+   avec le mauvais identifiant. Le défaut reste invisible tant qu'aucune
+   recette n'emploie les deux membres d'une paire — d'où la vérification. */
+for (const langue of [0, 1]) {
+  const parNom = new Map();
+  for (const [id, noms] of Object.entries(ING)) {
+    const nom = noms[langue].toLowerCase().trim();
+    (parNom.get(nom) || parNom.set(nom, []).get(nom)).push(id);
+  }
+  for (const [nom, ids] of parNom) {
+    if (ids.length > 1) {
+      errors.push(`lexique : « ${nom} » (${langue ? 'en' : 'fr'}) désigne `
+        + `${ids.length} ingrédients — ${ids.join(', ')}`);
+    }
+  }
+}
+
 const unused = Object.keys(ING).filter(id => !usedIng.has(id));
 
 console.log(`${DISHES.length} fiches · ${Object.keys(ING).length} ingrédients au lexique · ${usedIng.size} utilisés`);
