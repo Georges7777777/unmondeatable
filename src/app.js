@@ -12,24 +12,19 @@ const CONT_VIEW = {
 };
 const CONT_COLOR = { eu: '#e4633a', as: '#e0913a', af: '#d9b13a', na: '#c96f9a', sa: '#6fbf8f', oc: '#5aa8d9' };
 
-const state = { lang: 'fr', dish: null, servings: 4, cont: 'all', filters: emptyFilters() };
+const state = { lang: 'fr', dish: null, servings: 4, cont: 'all' };
 let globe;
 
 /* ---------- villes ----------
    Plusieurs spécialités partagent souvent la même ville (Naples, Lisbonne,
-   La Nouvelle-Orléans…). On les regroupe : le globe n'affiche qu'un point
-   par ville et la fiche renvoie vers ses voisines.
-   Recalculé après chaque synchronisation avec la base.  */
+   La Nouvelle-Orléans…). On les regroupe une fois pour toutes : le globe
+   n'affiche qu'un point par ville et la fiche renvoie vers ses voisines.  */
 const RANK = {};
+DISHES.forEach((d, i) => { RANK[d.id] = i; });
+
 const CITY_OF = {};   // id du plat -> id du groupe
 const CITY = {};      // id du groupe -> [plats, le plus représentatif en tête]
-
-function buildCities() {
-  for (const k in RANK) delete RANK[k];
-  for (const k in CITY_OF) delete CITY_OF[k];
-  for (const k in CITY) delete CITY[k];
-  DISHES.sort((a, b) => (a.rank || 0) - (b.rank || 0));
-  DISHES.forEach((d, i) => { RANK[d.id] = i; });
+(function buildCities() {
   const R = Math.PI / 180, LIM = 18; // km : même agglomération
   for (const d of DISHES) {
     if (CITY_OF[d.id]) continue;
@@ -43,7 +38,7 @@ function buildCities() {
     }
     CITY[d.id] = grp;   // d est déjà le mieux classé : il vient en premier
   }
-}
+})();
 // les autres spécialités de la même ville que d
 const siblingsOf = d => (CITY[CITY_OF[d.id]] || []).filter(x => x.id !== d.id);
 
@@ -103,15 +98,9 @@ function fmtTime(m) {
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /* ---------- panel ---------- */
-// Sur petit écran le panneau n'est pas une colonne à côté du globe mais une
-// feuille qui le recouvre : il doit pouvoir se refermer entièrement.
-const isSheet = () => window.matchMedia('(max-width:860px)').matches;
-function closePanel() { $('#panel').classList.add('hidden'); }
-
 function renderEmpty() {
   const picks = ['pizza-napoletana', 'ceviche', 'ramen-tonkotsu', 'tagine-agneau', 'feijoada', 'pad-thai'];
   $('#panel').innerHTML = `<div class="panel-empty fade">
-    <button class="close close-empty" title="${t('close')}">✕</button>
     <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="2.4">
       <circle cx="50" cy="50" r="34"/><ellipse cx="50" cy="50" rx="14" ry="34"/>
       <path d="M18 38h64M18 62h64"/><circle cx="50" cy="50" r="34"/>
@@ -123,7 +112,6 @@ function renderEmpty() {
       return `<button data-go="${id}">${esc(d.n[state.lang])}</button>`;
     }).join('')}</div></div>`;
   $('#panel').querySelectorAll('[data-go]').forEach(b => b.onclick = () => select(b.dataset.go));
-  const c = $('#panel .close-empty'); if (c) c.onclick = closePanel;
 }
 
 function renderDish() {
@@ -137,27 +125,23 @@ function renderDish() {
     <div class="art" id="art">${dishSVG(d, 480)}</div>
     <div class="credit" id="credit"></div>
     <button class="close" title="${t('close')}">✕</button>
-    ${IS_ADMIN ? `<div class="photo-edit">
+    <div class="photo-edit">
       <button id="photoBtn" title="${t('photoEditHelp')}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h3l2-2h8l2 2h3v13H3z"/><circle cx="12" cy="13" r="3.6"/></svg>
-        <span>${hasOwnPhoto(d) ? t('photoChange') : t('photoAdd')}</span>
+        <span>${MYPHOTO[d.id] ? t('photoChange') : t('photoAdd')}</span>
       </button>
-      ${hasOwnPhoto(d) ? `<button id="photoDel" class="del" title="${t('photoReset')}">
+      ${MYPHOTO[d.id] ? `<button id="photoDel" class="del" title="${t('photoReset')}">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M9 7V5h6v2M7 7l1 13h8l1-13"/></svg>
       </button>` : ''}
       <input type="file" id="photoFile" accept="image/*" hidden>
-    </div>` : ''}
+    </div>
     <div class="cap">
       <h2>${esc(d.n[state.lang])}</h2>
       <div class="loc"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"/></svg>${esc(d.p[state.lang])}</div>
     </div>
   </div>
   <div class="body">
-    ${IS_ADMIN ? `<button class="editbtn" id="editDish">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
-      Modifier cette fiche
-    </button>` : ''}
-    <div class="tags">${d.tags.map(x => TAGS[x] ? `<span>${TAGS[x][L()]}</span>` : '').join('')}</div>
+    <div class="tags">${d.tags.map(x => `<span>${TAGS[x][L()]}</span>`).join('')}</div>
     <p class="desc">${esc(d.d[state.lang])}</p>
     <div class="meta">
       <div><b>${fmtTime(d.prep)}</b><small>${t('prep')}</small></div>
@@ -191,7 +175,6 @@ function renderDish() {
   </div>`;
   $('#panel .close').onclick = deselect;
   bindPhotoEdit(d);
-  const ed = $('#editDish'); if (ed) ed.onclick = () => openEditor(d);
   $('#minus').onclick = () => setServings(state.servings - (state.servings > 12 ? 2 : 1));
   $('#plus').onclick = () => setServings(state.servings + (state.servings >= 12 ? 2 : 1));
   $('#panel').querySelectorAll('[data-go]').forEach(b => b.onclick = () => select(b.dataset.go));
@@ -201,9 +184,7 @@ function renderDish() {
   fillPhoto($('#art'), d, $('#credit'));
   [...sibs, ...near].forEach(x => fillPhoto($(`[data-th="${x.id}"]`), x, null));
 }
-/* ---------- photo (réservé à l'administration) ---------- */
-const hasOwnPhoto = d => !!(DB_PHOTO[d.id] || MYPHOTO[d.id]);
-
+/* ---------- photo personnalisée ---------- */
 function bindPhotoEdit(d) {
   const btn = $('#photoBtn'), file = $('#photoFile'), del = $('#photoDel');
   if (!btn || !file) return;
@@ -216,26 +197,20 @@ function bindPhotoEdit(d) {
     const lbl = btn.querySelector('span'), was = lbl.textContent;
     lbl.textContent = t('photoSaving'); btn.disabled = true;
     try {
-      const dataUrl = await shrinkImage(f);
-      // connecté : la photo part en base et devient visible par tous
-      if (typeof publishPhoto === 'function' && IS_ADMIN) await publishPhoto(d.id, dataUrl);
-      else await saveMyPhoto(d.id, dataUrl);
-      delete PHOTOS[d.id];
+      const url = await shrinkImage(f);
+      await saveMyPhoto(d.id, url);
       if (state.dish && state.dish.id === d.id) renderDish();
       flash(t('photoSaved'));
     } catch (e) {
       lbl.textContent = was; btn.disabled = false;
-      flash(e && e.message ? e.message : t('photoError'));
+      flash(t('photoError'));
     }
   };
   if (del) del.onclick = async () => {
-    try {
-      if (typeof unpublishPhoto === 'function' && IS_ADMIN && DB_PHOTO[d.id]) await unpublishPhoto(d.id);
-      await clearMyPhoto(d.id);
-      delete PHOTOS[d.id];            // on ré-interrogera Wikimedia
-      if (state.dish && state.dish.id === d.id) renderDish();
-      flash(t('photoRemoved'));
-    } catch (e) { flash(t('photoError')); }
+    await clearMyPhoto(d.id);
+    delete PHOTOS[d.id];              // on ré-interrogera Wikimedia
+    if (state.dish && state.dish.id === d.id) renderDish();
+    flash(t('photoRemoved'));
   };
 }
 /* petit message éphémère en bas d'écran */
@@ -268,18 +243,20 @@ function setServings(n) {
 
 /* ---------- selection ---------- */
 function pickMarker(m, keepZoom) {
-  // au doigt il n'y a pas de survol : le clic ouvre lui aussi la liste
-  if (groupable(m)) {
-    const r = $('#globe').getBoundingClientRect();
-    showPlaceMenu(m, r.left + m.sx, r.top + m.sy);
-    return;
-  }
+  if (m.kind === 'atlas') return selectAtlas(m, keepZoom);
   select(m.id, keepZoom);
+}
+function selectAtlas(m, keepZoom) {
+  state.dish = null;
+  globe.active = m.id;
+  globe.flyTo(m.lat, m.lon, keepZoom ? Math.max(globe.tZoom, 3) : 3.6);
+  $('#panel').classList.remove('hidden');
+  renderAtlasCard(m);
+  hideHint();
 }
 function select(id, keepZoom) {
   const d = DISHES.find(x => x.id === id);
   if (!d) return;
-  hidePlaceMenu();
   state.dish = d; state.servings = d.base;
   globe.active = id;
   globe.flyTo(d.lat, d.lon, keepZoom ? Math.max(globe.tZoom, 3.2) : 4.2);
@@ -290,115 +267,53 @@ function select(id, keepZoom) {
 function deselect() {
   state.dish = null; globe.active = null;
   renderEmpty();
-  // sur mobile, laisser l'écran d'accueil ouvert masquerait le globe sans
-  // qu'on puisse le refermer : on rend la main à la carte.
-  if (isSheet()) closePanel();
-  // On ne touche ni au cadrage ni au zoom : fermer une fiche, c'est reprendre
-  // l'exploration là où on l'avait laissée. Le bouton ↺ sert à revenir au monde.
-  globe.autoSpin = false;
+  const v = CONT_VIEW[state.cont];
+  globe.flyTo(v.lat, v.lon, v.z);
 }
 
 /* ---------- markers / filter ---------- */
+// continent approximatif d'un point (pour filtrer la couche atlas)
+function contOf(lat, lon) {
+  if (lat >= 34 && lat <= 72 && lon >= -26 && lon <= 46) return 'eu';
+  if (lat >= -38 && lat <= 37 && lon >= -20 && lon <= 55) return 'af';
+  if (lat >= -12 && lon >= 25 && lon <= 180) return 'as';
+  if (lat >= 12 && lon >= -172 && lon <= -30) return 'na';
+  if (lat < 13 && lon >= -95 && lon <= -30) return 'sa';
+  return 'oc';
+}
 function refreshMarkers() {
   const keep = state.cont === 'all';
   // rank = ordre d'ajout : les plats les plus emblématiques ont été écrits en premier,
   // ils l'emportent donc quand plusieurs fiches se superposent sur une même ville.
-  const list = DISHES.filter(d => (keep || d.c === state.cont) && matchFilters(d, state.filters))
+  const list = DISHES.filter(d => keep || d.c === state.cont)
     .map(d => ({
       id: d.id, lat: d.lat, lon: d.lon, label: d.n[state.lang],
       color: CONT_COLOR[d.c], rank: RANK[d.id]
     }));
+  if (ATLAS.on) {
+    for (const a of ATLAS.items) {
+      if (!keep && contOf(a.lat, a.lon) !== state.cont) continue;
+      list.push({ id: 'wd:' + a.q, lat: a.lat, lon: a.lon, label: a.name, kind: 'atlas' });
+    }
+  }
   globe.markers = list;
   updateCount();
 }
 function updateCount() {
   const el = $('#count'); if (!el) return;
-  const n = globe.markers.length;
-  el.textContent = n ? n + ' ' + t('spec') : t('fNone');
-  el.classList.toggle('empty', n === 0);
+  const n = globe.markers.filter(m => m.kind !== 'atlas').length;
+  let s = n + ' ' + t('spec');
+  if (ATLAS.loading) s += ' · ' + t('atlasLoading');
+  else if (ATLAS.on) s += ' · ' + (globe.markers.length - n) + ' ' + t('atlasPoints');
+  else if (ATLAS.failed) s += ' · ' + t('atlasFail');
+  el.textContent = s;
 }
 function setCont(c) {
   state.cont = c;
   document.querySelectorAll('.continents button[data-c]').forEach(b => b.classList.toggle('on', b.dataset.c === c));
   refreshMarkers();
-  if ($('#filterPanel') && $('#filterPanel').classList.contains('open')) renderFilters();
   const v = CONT_VIEW[c];
   globe.flyTo(v.lat, v.lon, v.z);
-}
-
-/* ---------- filtres ----------
-   Les continents disent où ; les filtres disent quoi. On les
-   garde repliés : ouverts en permanence ils mangeraient le globe
-   sur un téléphone, et la plupart des visites n'en ont pas besoin. */
-const FILTER_SECTIONS = [
-  { kind: 'without', label: 'fWithout', keys: ['meat', 'fish', 'pork', 'beef', 'alcohol'], dict: 'without' },
-  { kind: 'groups', label: 'fGroups', keys: ['veg', 'pork', 'beef', 'poultry', 'lamb', 'game', 'rabbit', 'fish', 'seafood'], dict: 'groups' },
-  { kind: 'diff', label: 'fDiff', keys: ['1', '2', '3'] },
-  { kind: 'speed', label: 'fSpeed', keys: ['fast', 'medium', 'long'], dict: 'speeds' },
-  { kind: 'tags', label: 'fTags', keys: ['veg', 'sea', 'festive', 'sunday', 'comfort', 'street', 'sweet', 'fast', 'slow'] }
-];
-
-function filterLabel(sec, key) {
-  if (sec.kind === 'diff') return t('diffs')[+key - 1];
-  if (sec.kind === 'tags') return (TAGS[key] || [])[L()] || key;
-  return (t(sec.dict) || {})[key] || key;
-}
-
-function activeFilterCount() {
-  const f = state.filters;
-  return f.without.size + f.groups.size + f.diff.size + f.speed.size + f.tags.size;
-}
-
-function renderFilters() {
-  const box = $('#filterPanel'); if (!box) return;
-  // le décompte se fait sur le continent choisi : afficher « 0 » pour une
-  // case utile ailleurs dans le monde serait trompeur
-  const pool = DISHES.filter(d => state.cont === 'all' || d.c === state.cont);
-  box.innerHTML = FILTER_SECTIONS.map(sec => {
-    const rows = sec.keys.map(k => {
-      const on = state.filters[sec.kind].has(k);
-      const n = on ? null : countFor(pool, state.filters, sec.kind, k);
-      const dead = n === 0 ? ' dead' : '';
-      return `<label class="fchip${on ? ' on' : ''}${dead}">`
-        + `<input type="checkbox" data-kind="${sec.kind}" data-key="${esc(k)}"${on ? ' checked' : ''}>`
-        + `<span>${esc(filterLabel(sec, k))}</span>`
-        + (n === null ? '' : `<b>${n}</b>`) + `</label>`;
-    }).join('');
-    return `<div class="fsec"><h4>${esc(t(sec.label))}</h4><div class="fchips">${rows}</div></div>`;
-  }).join('');
-  box.innerHTML = `<div class="fhead"><span>${esc(t('filters'))}</span>`
-    + `<button type="button" id="fclose" class="fclose" aria-label="${esc(t('close'))}">&times;</button></div>`
-    + box.innerHTML
-    + `<button type="button" id="fclear" class="fclear">${esc(t('filtersClear'))}</button>`;
-  $('#fclose').onclick = () => toggleFilters(false);
-
-  box.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = () => {
-    const set = state.filters[cb.dataset.kind];
-    cb.checked ? set.add(cb.dataset.key) : set.delete(cb.dataset.key);
-    applyFilters();
-  });
-  $('#fclear').onclick = () => { state.filters = emptyFilters(); applyFilters(); };
-}
-
-function applyFilters() {
-  refreshMarkers();
-  renderFilters();
-  const btn = $('#filterBtn'); if (!btn) return;
-  const n = activeFilterCount();
-  btn.textContent = n ? `${t('filters')} · ${n}` : t('filters');
-  btn.classList.toggle('on', n > 0);
-}
-
-function filtersOpen() {
-  const box = $('#filterPanel');
-  return !!(box && box.classList.contains('open'));
-}
-function toggleFilters(force) {
-  const box = $('#filterPanel'); if (!box) return;
-  const open = force != null ? force : !box.classList.contains('open');
-  box.classList.toggle('open', open);
-  $('#filterBtn').setAttribute('aria-expanded', String(open));
-  if (open) renderFilters();
 }
 
 /* ---------- search ---------- */
@@ -408,28 +323,28 @@ function runSearch(q) {
   if (q.length < 2) { box.classList.remove('on'); return; }
   const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const nq = norm(q);
-  // on cherche dans les langues effectivement téléchargées (au moins l'affichée)
-  const hits = DISHES.filter(d =>
-    LANGS.some(l => (d.n[l] && norm(d.n[l]).includes(nq)) || (d.p[l] && norm(d.p[l]).includes(nq)))
-    || d.i.some(([id]) => ING[id] && norm(ING[id][L()]).includes(nq))).slice(0, 8);
-  box.innerHTML = hits.length
+  const hits = DISHES.filter(d => LANGS.some(l => norm(d.n[l]).includes(nq) || norm(d.p[l]).includes(nq))
+    || d.i.some(([id]) => norm(ING[id][L()]).includes(nq))).slice(0, 8);
+  const extra = ATLAS.on
+    ? ATLAS.items.filter(a => norm(a.name).includes(norm(q))).slice(0, 4)
+    : [];
+  box.innerHTML = (hits.length || extra.length)
     ? hits.map(d => `<button data-go="${d.id}"><span>${esc(d.n[state.lang])}</span><small>${esc(d.p[state.lang])}</small></button>`).join('')
+    + extra.map(a => `<button data-wd="${a.q}"><span>${esc(a.name)}</span><small>${esc(a.country)} · ${t('encyclo')}</small></button>`).join('')
     : `<button disabled style="opacity:.6">${t('noRes')}</button>`;
   box.classList.add('on');
   box.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
     box.classList.remove('on'); $('#q').value = ''; select(b.dataset.go);
   });
+  box.querySelectorAll('[data-wd]').forEach(b => b.onclick = () => {
+    box.classList.remove('on'); $('#q').value = '';
+    const a = ATLAS.items.find(x => x.q === b.dataset.wd);
+    if (a) selectAtlas({ id: 'wd:' + a.q, lat: a.lat, lon: a.lon, label: a.name, kind: 'atlas' });
+  });
 }
 
 /* ---------- language ---------- */
-async function setLang(l) {
-  // les textes d'une langue ne sont téléchargés qu'au moment où on en a besoin
-  if (!LOADED[l]) {
-    document.body.classList.add('loading-lang');
-    try { await loadLang(l); }
-    catch (e) { document.body.classList.remove('loading-lang'); flash(t('loadError')); return; }
-    document.body.classList.remove('loading-lang');
-  }
+function setLang(l) {
   state.lang = l;
   document.documentElement.lang = l;
   document.querySelectorAll('.langs button').forEach(b => b.classList.toggle('on', b.dataset.l === l));
@@ -440,109 +355,43 @@ async function setLang(l) {
   document.querySelectorAll('.continents button[data-c]').forEach(b => {
     b.textContent = b.dataset.c === 'all' ? t('all') : t('conts')[b.dataset.c];
   });
-  if ($('#filterBtn')) applyFilters();
+  const ab = $('#atlas'); if (ab) { ab.textContent = t('atlas'); ab.title = t('atlasHelp'); }
   refreshMarkers();
   state.dish ? renderDish() : renderEmpty();
+  // les libellés de l'atlas dépendent de la langue : rechargement discret
+  if (ATLAS.on && ATLAS.lang !== state.lang) {
+    ATLAS.loading = true; updateCount();
+    loadAtlas(state.lang).then(items => {
+      ATLAS.items = items; ATLAS.lang = state.lang;
+    }).catch(() => { }).then(() => { ATLAS.loading = false; refreshMarkers(); });
+  }
 }
 
 /* ---------- tooltip ---------- */
 let tipEl;
 function showTip(m, x, y) {
-  // plusieurs spécialités sous le même point, et l'on est assez près du sol
-  // pour que ce soit vraiment le même lieu : on propose de choisir
-  if (m && groupable(m)) { hideTip(); showPlaceMenu(m, x, y); return; }
-  // fermeture différée : on doit pouvoir sortir du globe pour aller cliquer
-  // dans la liste sans qu'elle se dérobe
-  scheduleHideMenu();
   if (!tipEl) { tipEl = document.createElement('div'); tipEl.className = 'tip'; document.body.appendChild(tipEl); }
   if (!m) { tipEl.classList.remove('on'); return; }
   const d = DISHES.find(z => z.id === m.id);
-  if (!d) { tipEl.classList.remove('on'); return; }
-  tipEl.innerHTML = `${esc(d.n[state.lang])}<small>${esc(d.p[state.lang])}</small>`;
+  if (d) tipEl.innerHTML = `${esc(d.n[state.lang])}<small>${esc(d.p[state.lang])}</small>`;
+  else {
+    const a = ATLAS.items.find(z => 'wd:' + z.q === m.id) || {};
+    tipEl.innerHTML = `${esc(m.label)}<small>${esc(a.country || '')}</small>`;
+  }
   tipEl.style.left = (x + 16) + 'px'; tipEl.style.top = (y - 10) + 'px';
   tipEl.classList.add('on');
-}
-function hideTip() { if (tipEl) tipEl.classList.remove('on'); }
-
-/* ---------- liste des recettes d'un même lieu ----------
-   En vue rapprochée, un point qui en cache d'autres cesse d'être un
-   raccourci vers la fiche la mieux classée : il ouvre la liste complète
-   des spécialités de l'endroit, et c'est vous qui choisissez. */
-const PLACE_MENU_ZOOM = 5;   // en deçà, les points groupés couvrent une région entière
-const groupable = m =>
-  !!(m && m.groupIds && m.groupIds.length && globe && globe.zoom >= PLACE_MENU_ZOOM);
-
-let menuEl, menuTimer, menuFor = null;
-function ensureMenu() {
-  if (menuEl) return menuEl;
-  menuEl = document.createElement('div');
-  menuEl.className = 'placemenu';
-  // la souris doit pouvoir quitter le globe pour venir cliquer dans la liste
-  menuEl.addEventListener('pointerenter', () => clearTimeout(menuTimer));
-  menuEl.addEventListener('pointerleave', () => scheduleHideMenu());
-  document.body.appendChild(menuEl);
-  return menuEl;
-}
-function scheduleHideMenu() {
-  clearTimeout(menuTimer);
-  menuTimer = setTimeout(hidePlaceMenu, 260);
-}
-function hidePlaceMenu() {
-  clearTimeout(menuTimer);
-  if (menuEl) menuEl.classList.remove('on');
-  menuFor = null;
-}
-function showPlaceMenu(m, x, y) {
-  clearTimeout(menuTimer);
-  const ids = [m.id, ...m.groupIds];
-  const list = ids.map(id => DISHES.find(d => d.id === id)).filter(Boolean);
-  if (list.length < 2) { hidePlaceMenu(); return; }
-  const el = ensureMenu();
-  if (menuFor !== m.id) {
-    el.innerHTML = `<div class="ttl">${esc(list[0].p[state.lang])}
-        <small>${list.length} ${t('spec')}</small></div>
-      <div class="rows">${list.map(d => `<button data-go="${d.id}">
-        <span class="th" data-th="${d.id}">${dishSVG(d, 72)}</span>
-        <span class="tx"><b>${esc(d.n[state.lang])}</b><small>${esc(TAGS[d.tags[0]] ? TAGS[d.tags[0]][L()] : '')}</small></span>
-      </button>`).join('')}</div>`;
-    el.querySelectorAll('[data-go]').forEach(b => b.onclick = () => {
-      hidePlaceMenu(); select(b.dataset.go, true);
-    });
-    list.forEach(d => fillPhoto(el.querySelector(`[data-th="${d.id}"]`), d, null));
-    menuFor = m.id;
-  }
-  el.classList.add('on');
-  // on garde la liste dans l'écran
-  const r = el.getBoundingClientRect();
-  const left = Math.min(Math.max(8, x + 18), window.innerWidth - r.width - 8);
-  const top = Math.min(Math.max(8, y - 24), window.innerHeight - r.height - 8);
-  el.style.left = left + 'px'; el.style.top = top + 'px';
 }
 let hintTimer;
 function hideHint() { const h = $('#hint'); if (h) h.style.opacity = 0; }
 
 /* ---------- boot ---------- */
-window.addEventListener('DOMContentLoaded', async () => {
-  const nav = (navigator.language || 'fr').slice(0, 2);
-  const lang = LANGS.includes(nav) ? nav : 'fr';
-
-  // 1. données livrées avec le site : affichage immédiat, même hors ligne
-  try {
-    await loadCore(lang);
-  } catch (e) {
-    $('#boot').innerHTML = `<p>Impossible de charger les données.<br>
-      <button onclick="location.reload()">Réessayer</button></p>`;
-    return;
-  }
-  buildCities();
-  document.body.classList.remove('booting');
-
+window.addEventListener('DOMContentLoaded', () => {
+  // photos importées lors des sessions précédentes
+  loadMyPhotos().then(() => { if (state.dish) renderDish(); });
   globe = new Globe($('#globe'), {
     onPick: m => pickMarker(m, true),
     onHover: (m, x, y) => showTip(m, x, y)
   });
-  // rendu accessible pour les tests automatisés et le diagnostic en console
-  window.theGlobe = globe;
   refreshMarkers();
   // continent chips
   const cbox = $('.continents');
@@ -552,59 +401,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     b.onclick = () => setCont(c);
     cbox.appendChild(b);
   });
-  const fb = document.createElement('button');
-  fb.id = 'filterBtn'; fb.className = 'filter-toggle';
-  fb.setAttribute('aria-expanded', 'false'); fb.setAttribute('aria-controls', 'filterPanel');
-  fb.onclick = () => toggleFilters();
-  cbox.appendChild(fb);
-  // barre et panneau dans un même bloc : le panneau se place sous les
-  // puces au lieu de flotter à une hauteur fixe qui finissait par
-  // recouvrir le bouton dès que la barre passait à deux lignes
-  const wrap = document.createElement('div');
-  wrap.className = 'mapctl';
-  cbox.insertAdjacentElement('beforebegin', wrap);
-  wrap.appendChild(cbox);
-  const fp = document.createElement('div');
-  fp.id = 'filterPanel'; fp.className = 'filterpanel';
-  wrap.appendChild(fp);
-  applyFilters();
+  const ab = document.createElement('button');
+  ab.id = 'atlas'; ab.className = 'atlas-toggle';
+  ab.onclick = toggleAtlas;
+  cbox.appendChild(ab);
   document.querySelectorAll('.langs button').forEach(b => b.onclick = () => setLang(b.dataset.l));
   $('#q').addEventListener('input', e => runSearch(e.target.value));
   $('#q').addEventListener('keydown', e => {
-    if (e.key === 'Enter') { const f = $('#results button[data-go]'); if (f) f.click(); }
+    if (e.key === 'Enter') { const f = $('#results button[data-go],#results button[data-wd]'); if (f) f.click(); }
     if (e.key === 'Escape') { $('#results').classList.remove('on'); e.target.blur(); }
   });
   document.addEventListener('click', e => {
     if (!e.target.closest('.search')) $('#results').classList.remove('on');
-    // au doigt, toucher ailleurs referme la liste d'un lieu
-    if (!e.target.closest('.placemenu') && e.target.id !== 'globe') hidePlaceMenu();
-    // ... et le panneau de filtres, sauf si l'on vient de cliquer dedans
-    // ou sur le bouton qui l'ouvre
-    if (filtersOpen() && !e.target.closest('#filterPanel') && !e.target.closest('#filterBtn'))
-      toggleFilters(false);
   });
   $('#zin').onclick = () => globe.setZoom(globe.tZoom * 1.5);
   $('#zout').onclick = () => globe.setZoom(globe.tZoom / 1.5);
   $('#zhome').onclick = () => { state.cont = 'all'; setCont('all'); deselect(); };
-  document.addEventListener('keydown', e => {
-    if (e.key !== 'Escape') return;
-    if (filtersOpen()) { toggleFilters(false); return; }
-    if (state.dish) deselect();
-  });
-  await setLang(lang);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && state.dish) deselect(); });
+  // language from browser
+  const nav = (navigator.language || 'fr').slice(0, 2);
+  setLang(LANGS.includes(nav) ? nav : 'fr');
   renderEmpty();
   hintTimer = setTimeout(hideHint, 9000);
-  // barre d'administration : visible seulement via /?admin ou une session ouverte
-  if (IS_ADMIN || /[?&]admin\b/.test(location.search)) adminBar();
-  loadMyPhotos().catch(() => { });
-
-  // 2. une fois l'écran utilisable, on demande à la base ce qui a changé
-  //    depuis la publication du site (le plus souvent : rien).
-  syncFromDB(lang).then(res => {
-    if (res && res.changed) {
-      buildCities();
-      refreshMarkers();
-      state.dish ? renderDish() : renderEmpty();
-    }
-  }).catch(() => { });
 });

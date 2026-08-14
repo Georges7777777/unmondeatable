@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Un monde à table — 400 spécialités culinaires du monde entier</title>
+<meta name="description" content="Explorez le globe et découvrez 400 spécialités culinaires du monde entier, leurs recettes et leurs ingrédients, ajustés au nombre de convives. En français, anglais, espagnol et portugais.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🌍</text></svg>">
+<style>/*CSS*/</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="21" fill="#12395e" stroke="#e8b04b" stroke-width="1.6"/>
+        <path d="M9 17c5 2 9-1 13 1s7 0 11 3M8 30c6-1 9 2 14 1s8 2 12 0" stroke="#6fbf8f" stroke-width="2.2" stroke-linecap="round"/>
+        <ellipse cx="24" cy="24" rx="9" ry="21" stroke="#e8b04b" stroke-width="1.1" opacity=".55"/>
+        <circle cx="24" cy="24" r="4.6" fill="#e8b04b"/>
+      </svg>
+      <div class="brand-text">
+        <h1><span id="t1">Un monde à</span> <em id="t2">table</em></h1>
+        <p id="tag">Le Goût du Monde</p>
+        <p class="signature">Made in France — by Georges Viana</p>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+      <input id="q" type="search" autocomplete="off" placeholder="Chercher un plat, un pays…">
+      <div class="results" id="results"></div>
+    </div>
+    <div class="langs">
+      <button data-l="fr" class="on">FR</button><button data-l="en">EN</button>
+      <button data-l="es">ES</button><button data-l="pt">PT</button>
+    </div>
+  </header>
+  <main>
+    <div id="stage">
+      <canvas id="globe"></canvas>
+      <div class="continents"></div>
+      <div class="hint" id="hint"></div>
+      <div class="zoomctl">
+        <button id="zin" title="+">+</button>
+        <button id="zout" title="−">−</button>
+        <button id="zhome" title="↺">↺</button>
+      </div>
+      <div style="position:absolute;left:18px;bottom:22px;font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim)" id="count"></div>
+    </div>
+    <aside id="panel"></aside>
+  </main>
+</div>
+<script>/*JS*/</script>
+</body>
+</html>

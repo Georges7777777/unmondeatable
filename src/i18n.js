@@ -1,0 +1,123 @@
+/* ============================================================
+   i18n — interface, units, tags
+   ============================================================ */
+const LANGS = ['fr', 'en'];
+const UI = {
+  fr: {
+    tagline: 'Le Goût du Monde', title1: 'Un monde à', title2: 'table',
+    search: 'Chercher un plat, un pays…', noRes: 'Aucun résultat',
+    emptyTitle: 'Faites tourner le globe',
+    emptyText: 'Cliquez sur un point doré pour découvrir une spécialité locale, sa recette et ses ingrédients — ajustés au nombre de convives.',
+    suggest: 'Ou laissez-vous tenter :',
+    ingredients: 'Ingrédients', method: 'Préparation', servings: 'Pour combien de personnes ?',
+    people: 'pers.', prep: 'Préparation', cook: 'Cuisson', diff: 'Difficulté',
+    min: 'min', h: 'h', nearby: 'À découvrir dans la région', close: 'Fermer',
+    toTaste: 'à volonté', hint: 'Glissez pour tourner le globe · molette pour zoomer · cliquez sur un point',
+    all: 'Le monde entier', spec: 'spécialités', of: 'de',
+    diffs: ['Facile', 'Moyen', 'Exigeant'],
+    conts: { eu: 'Europe', as: 'Asie', af: 'Afrique', na: 'Amérique du Nord', sa: 'Amérique du Sud', oc: 'Océanie' },
+    reset: 'Vue mondiale', photoBy: 'Photo :', photoOff: 'Photo indisponible — illustration',
+    sameCity: 'Autres spécialités de la ville',
+    photoAdd: 'Ajouter une photo', photoChange: 'Changer la photo',
+    photoEditHelp: 'Importer votre propre photo pour ce plat',
+    photoReset: 'Revenir à la photo d’origine', photoMine: 'Votre photo',
+    photoSaving: 'Enregistrement…', photoSaved: 'Photo enregistrée',
+    photoRemoved: 'Photo personnelle retirée', photoError: 'Impossible d’enregistrer cette image',
+    photoBadType: 'Veuillez choisir un fichier image',
+    loadError: 'Chargement impossible, vérifiez votre connexion',
+    atlas: 'Atlas mondial', atlasHelp: 'Ajoute des centaines de plats issus de Wikidata (sans recette)', atlasLoading: 'chargement de l’atlas…', atlasPoints: 'repères', atlasFail: 'atlas indisponible', encyclo: 'Fiche encyclopédique', noRecipe: 'Ce plat vient de l’atlas Wikidata : aucune recette n’est encore rédigée pour lui.', readMore: 'Lire sur Wikipédia'
+  },
+  en: {
+    tagline: 'A Taste of the World', title1: 'A World at the', title2: 'Table',
+    search: 'Search a dish, a country…', noRes: 'No result',
+    emptyTitle: 'Spin the globe',
+    emptyText: 'Click a golden dot to discover a local speciality, its recipe and its ingredients — scaled to the number of guests.',
+    suggest: 'Or try one of these:',
+    ingredients: 'Ingredients', method: 'Method', servings: 'How many people?',
+    people: 'people', prep: 'Prep', cook: 'Cook', diff: 'Difficulty',
+    min: 'min', h: 'h', nearby: 'More from this region', close: 'Close',
+    toTaste: 'to taste', hint: 'Drag to spin · scroll to zoom · click a dot',
+    all: 'Whole world', spec: 'specialities', of: 'of',
+    diffs: ['Easy', 'Medium', 'Ambitious'],
+    conts: { eu: 'Europe', as: 'Asia', af: 'Africa', na: 'North America', sa: 'South America', oc: 'Oceania' },
+    reset: 'World view', photoBy: 'Photo:', photoOff: 'Photo unavailable — illustration',
+    sameCity: 'Other specialities from this city',
+    photoAdd: 'Add a photo', photoChange: 'Change photo',
+    photoEditHelp: 'Upload your own photo for this dish',
+    photoReset: 'Back to the original photo', photoMine: 'Your photo',
+    photoSaving: 'Saving…', photoSaved: 'Photo saved',
+    photoRemoved: 'Personal photo removed', photoError: 'Could not save this image',
+    photoBadType: 'Please choose an image file',
+    loadError: 'Could not load, check your connection',
+    atlas: 'World atlas', atlasHelp: 'Adds hundreds of dishes from Wikidata (no recipe)', atlasLoading: 'loading atlas…', atlasPoints: 'markers', atlasFail: 'atlas unavailable', encyclo: 'Encyclopaedic entry', noRecipe: 'This dish comes from the Wikidata atlas: no recipe has been written for it yet.', readMore: 'Read on Wikipedia'
+  }
+};
+
+/* units: [fr, en] — singular form; g/ml/etc are invariable */
+const UNITS = {
+  g: ['g', 'g'],
+  kg: ['kg', 'kg'],
+  ml: ['ml', 'ml'],
+  cl: ['cl', 'cl'],
+  l: ['l', 'l'],
+  pc: ['', ''],
+  tbsp: ['c. à soupe', 'tbsp'],
+  tsp: ['c. à café', 'tsp'],
+  pinch: ['pincée', 'pinch'],
+  clove: ['gousse', 'clove'],
+  bunch: ['bouquet', 'bunch'],
+  slice: ['tranche', 'slice'],
+  sprig: ['brin', 'sprig'],
+  cup: ['tasse', 'cup'],
+  can: ['boîte', 'can'],
+  sheet: ['feuille', 'sheet'],
+  stick: ['bâton', 'stick'],
+  drizzle: ['filet', 'drizzle']
+};
+/* plural forms where needed (fr/en) */
+const UNITS_PL = {
+  tbsp: ['c. à soupe', 'tbsp'],
+  tsp: ['c. à café', 'tsp'],
+  pinch: ['pincées', 'pinches'],
+  clove: ['gousses', 'cloves'],
+  bunch: ['bouquets', 'bunches'],
+  slice: ['tranches', 'slices'],
+  sprig: ['brins', 'sprigs'],
+  cup: ['tasses', 'cups'],
+  can: ['boîtes', 'cans'],
+  sheet: ['feuilles', 'sheets'],
+  stick: ['bâtons', 'sticks'],
+  drizzle: ['filets', 'drizzles']
+};
+
+const TAGS = {
+  street: ['Street food', 'Street food'],
+  sunday: ['Plat du dimanche', 'Sunday dish'],
+  festive: ['Fête', 'Festive'],
+  comfort: ['Réconfortant', 'Comfort food'],
+  sea: ['Produits de la mer', 'Seafood'],
+  veg: ['Végétarien', 'Vegetarian'],
+  spicy: ['Épicé', 'Spicy'],
+  slow: ['Mijoté', 'Slow-cooked'],
+  grill: ['Grillé', 'Grilled'],
+  sweet: ['Sucré', 'Sweet'],
+  soup: ['Soupe', 'Soup'],
+  breakfast: ['Petit-déjeuner', 'Breakfast'],
+  bake: ['Au four', 'Baked'],
+  fresh: ['Cru & frais', 'Raw & fresh'],
+  rice: ['Riz', 'Rice'],
+  noodles: ['Nouilles', 'Noodles'],
+  bread: ['Pain & pâte', 'Bread & dough'],
+  stew: ['Ragoût', 'Stew'],
+  legume: ['Légumineuses', 'Pulses'],
+  poultry: ['Volaille', 'Poultry'],
+  beef: ['Bœuf', 'Beef'],
+  lamb: ['Agneau', 'Lamb'],
+  pork: ['Porc', 'Pork'],
+  cheese: ['Fromage', 'Cheese'],
+  fry: ['Frit', 'Fried'],
+  drink: ['Boisson', 'Drink'],
+  fast: ['Rapide', 'Quick'],
+  fruit: ['Fruit', 'Fruit'],
+  raw: ['Cru', 'Raw']
+};
