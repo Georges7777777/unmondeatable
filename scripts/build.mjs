@@ -24,6 +24,27 @@ const OUT = path.join(ROOT, 'public/assets');
 
 fs.mkdirSync(OUT, { recursive: true });
 
+/* ---- 0. les sources du moteur sont-elles là ? ----
+   Le dépôt ne contient parfois que public/ et les données : c'est
+   suffisant pour servir le site, mais pas pour le reconstruire. Sans ce
+   contrôle, la construction échoue plus loin sur un fichier manquant, ou
+   pire, assemble un moteur à partir de sources dépareillées — c'est ainsi
+   qu'un « ReferenceError: ATLAS » a pu se produire en production, le
+   moteur étant bâti sur un app.js antérieur au retrait de cette couche. */
+const REQUIS = [
+  [ENGINE, 'i18n.js'], [ENGINE, 'geo.js'], [ENGINE, 'foodgroups.js'],
+  [ENGINE, 'filters.js'], [ENGINE, 'illus.js'], [ENGINE, 'globe.js'],
+  [LOCAL, 'data.js'], [LOCAL, 'admin.js'], [LOCAL, 'photos.js'],
+  [LOCAL, 'app.js'], [LOCAL, 'admin-ui.js']
+];
+const absents = REQUIS.filter(([d, f]) => !fs.existsSync(path.join(d, f)))
+  .map(([d, f]) => path.relative(ROOT, path.join(d, f)));
+if (absents.length) {
+  console.error('Sources du moteur introuvables :\n  ' + absents.join('\n  '));
+  console.error('\nLe dépôt est incomplet. Ces fichiers doivent accompagner public/ et scripts/.');
+  process.exit(1);
+}
+
 /* ---- 1. données ----
    Les JSON sont livrés avec le projet. On ne les régénère que si les
    fichiers de fiches d'origine sont présents (poste de l'auteur). */

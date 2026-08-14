@@ -1,7 +1,7 @@
 {
   "name": "Un monde à table",
   "short_name": "À table",
-  "description": "Le Goût du Monde : 400 spécialités culinaires sur un globe interactif.",
+  "description": "Le Goût du Monde : 1883 spécialités culinaires sur un globe interactif.",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
