@@ -41,7 +41,7 @@ const RETIRER = {
     'sausage_casing', 'black_sausage', 'blood_sausage', 'white_sausage', 'fresh_sausage',
     'sausage', 'smoked_sausage'],
   beef: ['red_kidney_beans', 'beef_broth', 'beef_stock', 'lamb_kidney', 'ground_veal', 'mutton_tallow',
-    'sheep_suet', 'sheep_blood', 'sheep_head'],
+    'sheep_suet', 'sheep_blood', 'sheep_head', 'goat_tripe'],
   poultry: ['chicken_broth', 'chicken_stock', 'quail_egg', 'pigeon_peas'],
   fish: ['mascarpone', 'lemon_peel', 'fish_sauce', 'anchovy_broth', 'fish_broth',
     'crayfish', 'crayfish_powder', 'cuttlefish', 'dashi_stock'],
@@ -50,15 +50,17 @@ const RETIRER = {
 };
 const AJOUTER = {
   beef: ['ground_veal', 'veal_foot', 'veal_shank', 'veal_shoulder', 'veal_escalope', 'jameed',
-    'sirloin_steak'],
+    'sirloin_steak', 'picanha', 'ox_blood_curd'],
   pork: ['pig_caul'],
   lamb: ['kazy_sausage', 'sheep_pluck', 'mutton_tallow', 'lamb_sausage',
-    'sheep_suet', 'sheep_blood', 'sheep_head', 'ram_testicles'],
-  seafood: ['cuttlefish', 'crayfish', 'crayfish_powder', 'limpets'],
+    'sheep_suet', 'sheep_blood', 'sheep_head', 'ram_testicles', 'goat_tripe'],
+  seafood: ['cuttlefish', 'crayfish', 'crayfish_powder', 'limpets', 'salted_shrimp'],
   fish: ['greenland_shark'],
+  /* le cochon d'Inde est un mammifère d'élevage : ni gibier ni volaille */
+  game: ['guinea_pig'],
   /* invisibles dans l'assiette, décisifs pour un végétarien */
   fish_trace: ['fish_sauce', 'anchovy_broth', 'fish_broth', 'dashi_stock', 'shrimp_paste',
-    'oyster_sauce', 'worcestershire', 'nam_pla', 'bagoong', 'patis'],
+    'oyster_sauce', 'worcestershire', 'nam_pla', 'bagoong', 'patis', 'salted_shrimp'],
   meat_trace: ['marshmallows', 'pig_caul',
     'beef_broth', 'beef_stock', 'chicken_broth', 'chicken_stock', 'lamb_bones',
     'pork_bones', 'beef_bones', 'veal_bones', 'gelatin', 'meat_stock', 'lard']
