@@ -95,28 +95,54 @@ function apiGet(url, ms = 9000) {
 const API_W = l => `https://${l}.wikipedia.org/w/api.php?action=query&format=json&origin=*`;
 const API_C = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*';
 
+/* Mots significatifs du nom d'un plat, sans les articles ni les liaisons.
+   Sert à vérifier qu'une image trouvée parle bien du bon plat. */
+const STOP = new Set(['de', 'da', 'do', 'di', 'du', 'des', 'la', 'le', 'les', 'el', 'al',
+  'a', 'à', 'au', 'aux', 'and', 'the', 'of', 'with', 'in', 'and', 'et', 'e', 'y',
+  'dish', 'food', 'style', 'sauce', 'soup', 'cake', 'pie', 'stew', 'bread', 'rice']);
+const keyWords = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  .toLowerCase().split(/[^a-z0-9]+/)
+  .filter(w => w.length > 3 && !STOP.has(w));
+
 /* nom du fichier illustrant l'article du plat */
 async function findFile(d) {
   const w = WIKI[d.id] || [];
-  for (const [lang, title] of [['en', w[0]], ['fr', w[1]], ['en', d.n.en], ['fr', d.n.fr]]) {
+  /* On interroge d'abord les Wikipédias où l'article a le plus de chances
+     d'exister — y compris celle du pays du plat, car une spécialité
+     régionale portugaise ou italienne n'a souvent d'article que chez elle. */
+  const tries = [];
+  // la Wikipédia du pays d'abord : elle seule a souvent un article sur une
+  // spécialité régionale, et son illustration montre le plat, pas l'ingrédient
+  if (w[2] && w[3]) tries.push([w[2], w[3]]);
+  tries.push(['en', w[0]], ['fr', w[1]], ['en', d.n.en], ['fr', d.n.fr]);
+
+  for (const [lang, title] of tries) {
     if (!title) continue;
     try {
       const j = await apiGet(`${API_W(lang)}&redirects=1&prop=pageimages&piprop=name&titles=${encodeURIComponent(title)}`);
       const pages = (j.query && j.query.pages) || {};
       for (const k in pages) {
+        if (pages[k].missing !== undefined) continue;
         const n = pages[k].pageimage;
         if (n && !BAD_EXT.test(n)) return n;
       }
     } catch (e) { /* on tente la source suivante */ }
   }
-  // dernier recours : recherche d'image sur Commons
+
+  /* Dernier recours : recherche sur Commons. On n'accepte le résultat que si
+     son nom de fichier reprend un mot du plat — sans cette vérification, une
+     requête sans réponse pertinente renvoyait la première image venue, et
+     plusieurs plats se retrouvaient illustrés par la même photo. */
   try {
-    const q = encodeURIComponent((w[0] || d.n.en) + ' dish food');
-    const j = await apiGet(`${API_C}&generator=search&gsrsearch=${q}&gsrnamespace=6&gsrlimit=5`);
+    const want = new Set([...keyWords(w[0] || d.n.en), ...keyWords(d.n.fr)]);
+    if (!want.size) return null;
+    const q = encodeURIComponent((w[0] || d.n.en) + ' food');
+    const j = await apiGet(`${API_C}&generator=search&gsrsearch=${q}&gsrnamespace=6&gsrlimit=8`);
     const pages = (j.query && j.query.pages) || {};
     for (const k in pages) {
       const n = String(pages[k].title || '').replace(/^File:/, '');
-      if (n && !BAD_EXT.test(n)) return n;
+      if (!n || BAD_EXT.test(n)) continue;
+      if (keyWords(n).some(word => want.has(word))) return n;
     }
   } catch (e) { }
   return null;
@@ -147,9 +173,19 @@ async function fileInfo(name, width) {
   return null;
 }
 
-/* résultat mis en cache : une seule requête par plat et par session */
+/* résultat mis en cache : une seule requête par plat et par session
+   Ordre de priorité :
+     1. photo publiée depuis l'administration (visible par tous)
+     2. photo locale de ce navigateur (mode hors ligne / brouillon)
+     3. Wikimedia Commons                                            */
+/* Une même image ne doit jamais illustrer deux plats différents : ce serait
+   pris pour une erreur, à juste titre. On retient donc quelle fiche a obtenu
+   quelle photo, et l'on préfère l'illustration dessinée au doublon. */
+const PHOTO_OWNER = {};   // nom de fichier Wikimedia -> id de la fiche
+
 function getPhoto(d, width = 1000) {
-  // une photo importée par l'utilisateur court-circuite Wikimedia
+  const pub = typeof DB_PHOTO !== 'undefined' && DB_PHOTO[d.id];
+  if (pub) return Promise.resolve({ url: pub.url, mine: true, credit: pub.credit });
   if (MYPHOTO[d.id]) return Promise.resolve({ url: MYPHOTO[d.id], mine: true });
   if (d.id in PHOTOS) return Promise.resolve(PHOTOS[d.id]);
   if (PHOTO_JOBS[d.id]) return PHOTO_JOBS[d.id];
@@ -157,7 +193,10 @@ function getPhoto(d, width = 1000) {
     let res = null;
     try {
       const name = await findFile(d);
-      if (name) res = await fileInfo(name, width);
+      if (name && (PHOTO_OWNER[name] || d.id) === d.id) {
+        PHOTO_OWNER[name] = d.id;
+        res = await fileInfo(name, width);
+      }
     } catch (e) { res = null; }
     PHOTOS[d.id] = res;
     delete PHOTO_JOBS[d.id];
@@ -189,7 +228,7 @@ function fillPhoto(box, d, credit) {
       requestAnimationFrame(() => img.classList.add('on'));
       if (credit && credit.isConnected) {
         if (p.mine) {
-          credit.textContent = t('photoMine');
+          credit.textContent = p.credit || t('photoMine');
         } else {
           const who = [p.author, p.license].filter(Boolean).join(' · ') || 'Wikimedia Commons';
           credit.innerHTML = p.page
