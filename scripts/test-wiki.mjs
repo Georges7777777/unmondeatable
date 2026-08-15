@@ -10,6 +10,7 @@
    On rejoue le scénario contre une fausse Wikipédia, sans réseau.
    Nécessite un serveur local sur public/ (port 8099).
    ============================================================ */
+import { fichiersDonnees } from './fichiers-donnees.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,7 +28,7 @@ const check = (cond, label, detail = '') =>
 /* ---------- 1. chaque fiche a un titre d'article exploitable ---------- */
 let code = fs.readFileSync(path.join(SRC, 'lexicon.js'), 'utf8') + '\n'
   + fs.readFileSync(path.join(SRC, 'wiki.js'), 'utf8') + '\n';
-for (let i = 1; i <= 58; i++) code += fs.readFileSync(path.join(SRC, `d${i}.js`), 'utf8') + '\n';
+for (const f of fichiersDonnees(SRC)) code += fs.readFileSync(path.join(SRC, f), 'utf8') + '\n';
 const { DISHES, WIKI } = new Function(code + '\nreturn { DISHES, WIKI };')();
 
 const sans = DISHES.filter(d => {

@@ -12,6 +12,7 @@
 
    Usage : node scripts/export-data.mjs
    ============================================================ */
+import { fichiersDonnees } from './fichiers-donnees.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
@@ -28,7 +29,11 @@ if (!fs.existsSync(SRC)) {
 }
 
 const files = ['lexicon.js', 'wiki.js'];
-for (let i = 1; i <= 58; i++) files.push(`d${i}.js`);
+/* Les fichiers de données sont découverts, non énumérés : ajouter un
+   d59.js ne doit pas obliger à corriger trois scripts. L'ordre reste
+   numérique — c'est lui qui décide quelle fiche l'emporte quand deux
+   points se superposent. */
+for (const f of fichiersDonnees(SRC)) files.push(f);
 let code = '';
 for (const f of files) code += fs.readFileSync(path.join(SRC, f), 'utf8') + '\n';
 const { DISHES, ING, WIKI } = new Function(code + '\n return { DISHES, ING, WIKI };')();

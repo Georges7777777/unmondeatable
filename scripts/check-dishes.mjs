@@ -8,18 +8,37 @@
 
    Usage : node scripts/check-dishes.mjs
    ============================================================ */
+import { fichiersDonnees } from './fichiers-donnees.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SRC = path.resolve(HERE, '../../src');
-const NB_FILES = 58;
+/* voir export-data.mjs : les fichiers sont découverts, pas énumérés */
 
 let code = fs.readFileSync(path.join(SRC, 'lexicon.js'), 'utf8') + '\n'
   + fs.readFileSync(path.join(SRC, 'wiki.js'), 'utf8') + '\n';
-for (let i = 1; i <= NB_FILES; i++) code += fs.readFileSync(path.join(SRC, `d${i}.js`), 'utf8') + '\n';
+for (const f of fichiersDonnees(SRC)) code += fs.readFileSync(path.join(SRC, f), 'utf8') + '\n';
 const { DISHES, ING } = new Function(code + '\nreturn { DISHES, ING };')();
+
+/* Chaque fichier déclare un tableau Dn, et le dernier les concatène à la
+   main. Oublier un lot dans cette concaténation ne provoque aucune erreur :
+   les fiches sont simplement absentes de l'atlas, sans un mot. On vérifie
+   donc que le premier plat de chaque tableau se retrouve bien dans DISHES. */
+{
+  const numeros = fichiersDonnees(SRC).map(f => f.slice(1, -3));
+  const lots = new Function(code + '\nreturn [' + numeros.map(n => `D${n}`).join(',') + '];')();
+  const presents = new Set(DISHES.map(d => d.id));
+  const oublies = lots
+    .map((lot, i) => (lot && lot.length && !presents.has(lot[0].id)) ? 'd' + numeros[i] + '.js' : null)
+    .filter(Boolean);
+  if (oublies.length) {
+    console.error('Lot(s) absents de la concaténation finale : ' + oublies.join(', '));
+    console.error('Ajoutez-les à la ligne « const DISHES = [].concat(...) » du dernier fichier.');
+    process.exit(1);
+  }
+}
 
 const i18n = fs.readFileSync(path.resolve(HERE, '../src/engine/i18n.js'), 'utf8');
 const { LANGS, UNITS, TAGS } = new Function(i18n + '\nreturn { LANGS, UNITS, TAGS };')();
