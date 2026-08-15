@@ -59,9 +59,23 @@ function applyLang(lang) {
   if (!t) return;
   for (const d of DISHES) {
     const x = t[d.id];
-    if (!x) continue;
-    d.n[lang] = x.n; d.p[lang] = x.p; d.d[lang] = x.d; d.s[lang] = x.s;
+    if (x) { d.n[lang] = x.n; d.p[lang] = x.p; d.d[lang] = x.d; d.s[lang] = x.s; }
+    completerTextes(d, lang);
   }
+}
+/* Une fiche peut n'avoir aucun texte dans la langue affichée : ajoutée
+   depuis l'administration sans traduction, importée d'un tableur en
+   français seulement, ou publiée avant que ses textes ne le soient.
+   Sans repli, l'affichage échouait sur d.s[lang].map — et comme le
+   panneau n'est réécrit qu'à la toute fin, l'utilisateur voyait la
+   fiche précédente rester en place, comme si le clic n'avait rien fait.
+   On préfère montrer la fiche dans l'autre langue, ou incomplète. */
+function completerTextes(d, lang) {
+  const autre = ['fr', 'en'].find(l => l !== lang && d.n && d.n[l]);
+  if (d.n[lang] == null) d.n[lang] = autre ? d.n[autre] : d.id;
+  if (d.p[lang] == null) d.p[lang] = autre ? d.p[autre] : '';
+  if (d.d[lang] == null) d.d[lang] = autre ? d.d[autre] : '';
+  if (!Array.isArray(d.s[lang])) d.s[lang] = autre && Array.isArray(d.s[autre]) ? d.s[autre] : [];
 }
 
 /* ============================================================
@@ -136,6 +150,17 @@ async function syncFromDB(lang) {
       changed++;
     }
 
+    /* 2 bis. ingrédients inconnus du lexique livré avec le site.
+       Une fiche importée d'un tableur peut nommer des ingrédients créés
+       après la construction de l'instantané : sans leur libellé, la
+       liste des ingrédients ne pouvait pas s'écrire. On ne va chercher
+       le lexique complet que si le besoin s'en fait sentir. */
+    if (ds.some(row => (row.ingredients || []).some(([id]) => !ING[id]))) {
+      const lex = await fetch(`${SUPA.url}/rest/v1/atlas_ingredients?select=id,fr,en`, { headers: h })
+        .then(r => r.ok ? r.json() : []).catch(() => []);
+      for (const row of lex) ING[row.id] = [row.fr, row.en];
+    }
+
     // 3. textes modifiés, dans la langue affichée uniquement
     const ts = await fetch(
       `${SUPA.url}/rest/v1/atlas_dish_texts?select=dish_id,name,place,description,steps&lang=eq.${lang}&updated_at=gt.${since}`,
@@ -153,6 +178,8 @@ async function syncFromDB(lang) {
     // hors ligne ou base indisponible : le site continue avec l'instantané
     return { changed, offline: true };
   }
+  // une fiche neuve venue de la base n'a pas traversé applyLang
+  for (const d of DISHES) completerTextes(d, lang);
   DISHES = DISHES.filter(d => !d._hidden);
   return { changed };
 }

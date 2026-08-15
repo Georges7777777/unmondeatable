@@ -26,6 +26,7 @@ const UI = {
     photoRemoved: 'Photo personnelle retirée', photoError: 'Impossible d’enregistrer cette image',
     photoBadType: 'Veuillez choisir un fichier image',
     loadError: 'Chargement impossible, vérifiez votre connexion',
+    dishError: 'Cette fiche est incomplète et n’a pas pu s’afficher entièrement.',
     filters: 'Filtres', filtersOn: 'filtre(s)', filtersClear: 'Tout effacer',
     fWithout: 'Sans', fGroups: 'Ingrédient principal', fDiff: 'Difficulté', fSpeed: 'Temps total', fTags: 'Occasion',
     fNone: 'Aucune fiche ne correspond à ces filtres',
@@ -56,6 +57,7 @@ const UI = {
     photoRemoved: 'Personal photo removed', photoError: 'Could not save this image',
     photoBadType: 'Please choose an image file',
     loadError: 'Could not load, check your connection',
+    dishError: 'This entry is incomplete and could not be displayed in full',
     filters: 'Filters', filtersOn: 'filter(s)', filtersClear: 'Clear all',
     fWithout: 'Without', fGroups: 'Main ingredient', fDiff: 'Difficulty', fSpeed: 'Total time', fTags: 'Occasion',
     fNone: 'No dish matches these filters',
@@ -201,9 +203,23 @@ function applyLang(lang) {
   if (!t) return;
   for (const d of DISHES) {
     const x = t[d.id];
-    if (!x) continue;
-    d.n[lang] = x.n; d.p[lang] = x.p; d.d[lang] = x.d; d.s[lang] = x.s;
+    if (x) { d.n[lang] = x.n; d.p[lang] = x.p; d.d[lang] = x.d; d.s[lang] = x.s; }
+    completerTextes(d, lang);
   }
+}
+/* Une fiche peut n'avoir aucun texte dans la langue affichée : ajoutée
+   depuis l'administration sans traduction, importée d'un tableur en
+   français seulement, ou publiée avant que ses textes ne le soient.
+   Sans repli, l'affichage échouait sur d.s[lang].map — et comme le
+   panneau n'est réécrit qu'à la toute fin, l'utilisateur voyait la
+   fiche précédente rester en place, comme si le clic n'avait rien fait.
+   On préfère montrer la fiche dans l'autre langue, ou incomplète. */
+function completerTextes(d, lang) {
+  const autre = ['fr', 'en'].find(l => l !== lang && d.n && d.n[l]);
+  if (d.n[lang] == null) d.n[lang] = autre ? d.n[autre] : d.id;
+  if (d.p[lang] == null) d.p[lang] = autre ? d.p[autre] : '';
+  if (d.d[lang] == null) d.d[lang] = autre ? d.d[autre] : '';
+  if (!Array.isArray(d.s[lang])) d.s[lang] = autre && Array.isArray(d.s[autre]) ? d.s[autre] : [];
 }
 
 /* ============================================================
@@ -278,6 +294,17 @@ async function syncFromDB(lang) {
       changed++;
     }
 
+    /* 2 bis. ingrédients inconnus du lexique livré avec le site.
+       Une fiche importée d'un tableur peut nommer des ingrédients créés
+       après la construction de l'instantané : sans leur libellé, la
+       liste des ingrédients ne pouvait pas s'écrire. On ne va chercher
+       le lexique complet que si le besoin s'en fait sentir. */
+    if (ds.some(row => (row.ingredients || []).some(([id]) => !ING[id]))) {
+      const lex = await fetch(`${SUPA.url}/rest/v1/atlas_ingredients?select=id,fr,en`, { headers: h })
+        .then(r => r.ok ? r.json() : []).catch(() => []);
+      for (const row of lex) ING[row.id] = [row.fr, row.en];
+    }
+
     // 3. textes modifiés, dans la langue affichée uniquement
     const ts = await fetch(
       `${SUPA.url}/rest/v1/atlas_dish_texts?select=dish_id,name,place,description,steps&lang=eq.${lang}&updated_at=gt.${since}`,
@@ -295,6 +322,8 @@ async function syncFromDB(lang) {
     // hors ligne ou base indisponible : le site continue avec l'instantané
     return { changed, offline: true };
   }
+  // une fiche neuve venue de la base n'a pas traversé applyLang
+  for (const d of DISHES) completerTextes(d, lang);
   DISHES = DISHES.filter(d => !d._hidden);
   return { changed };
 }
@@ -813,10 +842,15 @@ const STYLES = {
   }
 };
 
+/* Palette de secours : une fiche arrivée de la base ou d'un import Excel
+   peut n'avoir aucune illustration décrite. Sans ce repli, le dessin
+   échouait sur une couleur manquante et, l'exception remontant jusqu'à
+   l'affichage de la fiche, le panneau restait sur la fiche précédente. */
+const FOOD_DEFAUT = ['#c98a4b', '#e8c46a', '#8f5a3a', '#f0e4c8'];
 function dishSVG(d, size = 400) {
-  const a = d.art, rd = rng(d.id + (a.style || ''));
+  const a = (d && d.art) || {}, rd = rng((d && d.id ? d.id : '?') + (a.style || ''));
   const S = size, c = S / 2, r = S * 0.33;
-  const p = a.food;
+  const p = Array.isArray(a.food) && a.food.length ? a.food : FOOD_DEFAUT;
   const bg1 = a.bg || '#2a3550', bg2 = shade(a.bg || '#2a3550', -.10);
   const plate = a.plate || '#f6f1e7';
   let deco = '';
@@ -1879,7 +1913,7 @@ function renderEmpty() {
 }
 
 function renderDish() {
-  const d = state.dish, f = state.servings / d.base;
+  const d = state.dish, f = state.servings / (d.base || 4);
   const sibs = siblingsOf(d);
   const sibIds = new Set(sibs.map(x => x.id));
   const near = DISHES.filter(x => x.id !== d.id && !sibIds.has(x.id))
@@ -1909,12 +1943,12 @@ function renderDish() {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
       Modifier cette fiche
     </button>` : ''}
-    <div class="tags">${d.tags.map(x => TAGS[x] ? `<span>${TAGS[x][L()]}</span>` : '').join('')}</div>
+    <div class="tags">${(d.tags || []).map(x => TAGS[x] ? `<span>${TAGS[x][L()]}</span>` : '').join('')}</div>
     <p class="desc">${esc(d.d[state.lang])}</p>
     <div class="meta">
       <div><b>${fmtTime(d.prep)}</b><small>${t('prep')}</small></div>
       <div><b>${fmtTime(d.cook)}</b><small>${t('cook')}</small></div>
-      <div><b>${t('diffs')[d.diff - 1]}</b><small>${t('diff')}</small></div>
+      <div><b>${t('diffs')[d.diff - 1] || '—'}</b><small>${t('diff')}</small></div>
     </div>
     <h3 class="sec">${t('ingredients')}</h3>
     <div class="servings">
@@ -1925,7 +1959,7 @@ function renderDish() {
     </div>
     <ul class="ing" id="ilist">${ingRows(d, f)}</ul>
     <h3 class="sec">${t('method')}</h3>
-    <ol class="steps">${d.s[state.lang].map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+    <ol class="steps">${(d.s[state.lang] || []).map(x => `<li>${esc(x)}</li>`).join('')}</ol>
     ${sibs.length ? `<div class="nearby samecity">
       <h3 class="sec">${t('sameCity')}</h3>
       ${sibs.map(x => `<button data-go="${x.id}">
@@ -2001,9 +2035,11 @@ function flash(msg) {
 }
 
 function ingRows(d, f) {
-  return d.i.map(([id, q, u]) => {
+  return (d.i || []).map(([id, q, u]) => {
     const s = scaleQty(q, u, f);
-    return `<li><span class="q">${s.n}${s.n && s.u ? ' ' : ''}${s.u}</span><span>${ING[id][L()]}</span></li>`;
+    // un ingrédient absent du lexique ne doit pas faire échouer la fiche
+    const nom = ING[id] ? ING[id][L()] : String(id).replace(/_/g, ' ');
+    return `<li><span class="q">${s.n}${s.n && s.u ? ' ' : ''}${s.u}</span><span>${esc(nom)}</span></li>`;
   }).join('');
 }
 function updateBtns() {
@@ -2032,11 +2068,21 @@ function select(id, keepZoom) {
   const d = DISHES.find(x => x.id === id);
   if (!d) return;
   hidePlaceMenu();
-  state.dish = d; state.servings = d.base;
+  state.dish = d; state.servings = d.base || 4;
   globe.active = id;
   globe.flyTo(d.lat, d.lon, keepZoom ? Math.max(globe.tZoom, 3.2) : 4.2);
   $('#panel').classList.remove('hidden');
-  renderDish();
+  /* Le panneau n'est réécrit qu'à la fin de renderDish : si le rendu
+     échoue en route, l'ancienne fiche reste affichée et le clic semble
+     n'avoir servi à rien. On préfère le dire. */
+  try { renderDish(); }
+  catch (e) {
+    console.error('fiche illisible :', id, e);
+    $('#panel').innerHTML = `<div class="body"><h2>${esc(d.n && d.n[state.lang] ? d.n[state.lang] : id)}</h2>
+      <p class="desc">${t('dishError')}</p>
+      <button class="close" title="${t('close')}">✕</button></div>`;
+    const c = $('#panel .close'); if (c) c.onclick = deselect;
+  }
   hideHint();
 }
 function deselect() {
@@ -2057,7 +2103,7 @@ function refreshMarkers() {
   // ils l'emportent donc quand plusieurs fiches se superposent sur une même ville.
   const list = DISHES.filter(d => (keep || d.c === state.cont) && matchFilters(d, state.filters))
     .map(d => ({
-      id: d.id, lat: d.lat, lon: d.lon, label: d.n[state.lang],
+      id: d.id, lat: d.lat, lon: d.lon, label: d.n[state.lang] || d.id,
       color: CONT_COLOR[d.c], rank: RANK[d.id]
     }));
   globe.markers = list;

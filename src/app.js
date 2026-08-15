@@ -127,7 +127,7 @@ function renderEmpty() {
 }
 
 function renderDish() {
-  const d = state.dish, f = state.servings / d.base;
+  const d = state.dish, f = state.servings / (d.base || 4);
   const sibs = siblingsOf(d);
   const sibIds = new Set(sibs.map(x => x.id));
   const near = DISHES.filter(x => x.id !== d.id && !sibIds.has(x.id))
@@ -157,12 +157,12 @@ function renderDish() {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
       Modifier cette fiche
     </button>` : ''}
-    <div class="tags">${d.tags.map(x => TAGS[x] ? `<span>${TAGS[x][L()]}</span>` : '').join('')}</div>
+    <div class="tags">${(d.tags || []).map(x => TAGS[x] ? `<span>${TAGS[x][L()]}</span>` : '').join('')}</div>
     <p class="desc">${esc(d.d[state.lang])}</p>
     <div class="meta">
       <div><b>${fmtTime(d.prep)}</b><small>${t('prep')}</small></div>
       <div><b>${fmtTime(d.cook)}</b><small>${t('cook')}</small></div>
-      <div><b>${t('diffs')[d.diff - 1]}</b><small>${t('diff')}</small></div>
+      <div><b>${t('diffs')[d.diff - 1] || '—'}</b><small>${t('diff')}</small></div>
     </div>
     <h3 class="sec">${t('ingredients')}</h3>
     <div class="servings">
@@ -173,7 +173,7 @@ function renderDish() {
     </div>
     <ul class="ing" id="ilist">${ingRows(d, f)}</ul>
     <h3 class="sec">${t('method')}</h3>
-    <ol class="steps">${d.s[state.lang].map(x => `<li>${esc(x)}</li>`).join('')}</ol>
+    <ol class="steps">${(d.s[state.lang] || []).map(x => `<li>${esc(x)}</li>`).join('')}</ol>
     ${sibs.length ? `<div class="nearby samecity">
       <h3 class="sec">${t('sameCity')}</h3>
       ${sibs.map(x => `<button data-go="${x.id}">
@@ -249,9 +249,11 @@ function flash(msg) {
 }
 
 function ingRows(d, f) {
-  return d.i.map(([id, q, u]) => {
+  return (d.i || []).map(([id, q, u]) => {
     const s = scaleQty(q, u, f);
-    return `<li><span class="q">${s.n}${s.n && s.u ? ' ' : ''}${s.u}</span><span>${ING[id][L()]}</span></li>`;
+    // un ingrédient absent du lexique ne doit pas faire échouer la fiche
+    const nom = ING[id] ? ING[id][L()] : String(id).replace(/_/g, ' ');
+    return `<li><span class="q">${s.n}${s.n && s.u ? ' ' : ''}${s.u}</span><span>${esc(nom)}</span></li>`;
   }).join('');
 }
 function updateBtns() {
@@ -280,11 +282,21 @@ function select(id, keepZoom) {
   const d = DISHES.find(x => x.id === id);
   if (!d) return;
   hidePlaceMenu();
-  state.dish = d; state.servings = d.base;
+  state.dish = d; state.servings = d.base || 4;
   globe.active = id;
   globe.flyTo(d.lat, d.lon, keepZoom ? Math.max(globe.tZoom, 3.2) : 4.2);
   $('#panel').classList.remove('hidden');
-  renderDish();
+  /* Le panneau n'est réécrit qu'à la fin de renderDish : si le rendu
+     échoue en route, l'ancienne fiche reste affichée et le clic semble
+     n'avoir servi à rien. On préfère le dire. */
+  try { renderDish(); }
+  catch (e) {
+    console.error('fiche illisible :', id, e);
+    $('#panel').innerHTML = `<div class="body"><h2>${esc(d.n && d.n[state.lang] ? d.n[state.lang] : id)}</h2>
+      <p class="desc">${t('dishError')}</p>
+      <button class="close" title="${t('close')}">✕</button></div>`;
+    const c = $('#panel .close'); if (c) c.onclick = deselect;
+  }
   hideHint();
 }
 function deselect() {
@@ -305,7 +317,7 @@ function refreshMarkers() {
   // ils l'emportent donc quand plusieurs fiches se superposent sur une même ville.
   const list = DISHES.filter(d => (keep || d.c === state.cont) && matchFilters(d, state.filters))
     .map(d => ({
-      id: d.id, lat: d.lat, lon: d.lon, label: d.n[state.lang],
+      id: d.id, lat: d.lat, lon: d.lon, label: d.n[state.lang] || d.id,
       color: CONT_COLOR[d.c], rank: RANK[d.id]
     }));
   globe.markers = list;

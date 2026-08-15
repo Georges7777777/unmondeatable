@@ -173,10 +173,15 @@ const STYLES = {
   }
 };
 
+/* Palette de secours : une fiche arrivée de la base ou d'un import Excel
+   peut n'avoir aucune illustration décrite. Sans ce repli, le dessin
+   échouait sur une couleur manquante et, l'exception remontant jusqu'à
+   l'affichage de la fiche, le panneau restait sur la fiche précédente. */
+const FOOD_DEFAUT = ['#c98a4b', '#e8c46a', '#8f5a3a', '#f0e4c8'];
 function dishSVG(d, size = 400) {
-  const a = d.art, rd = rng(d.id + (a.style || ''));
+  const a = (d && d.art) || {}, rd = rng((d && d.id ? d.id : '?') + (a.style || ''));
   const S = size, c = S / 2, r = S * 0.33;
-  const p = a.food;
+  const p = Array.isArray(a.food) && a.food.length ? a.food : FOOD_DEFAUT;
   const bg1 = a.bg || '#2a3550', bg2 = shade(a.bg || '#2a3550', -.10);
   const plate = a.plate || '#f6f1e7';
   let deco = '';
